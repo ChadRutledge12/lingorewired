@@ -184,6 +184,7 @@ export default function Home({ user }) {
           existingWords: words.map(w => w.word).join(', ')
         })
       })
+      if (response.status === 401) { router.push('/login?next=/'); return }
       const data = await response.json()
       if (!response.ok) throw new Error(data.error || 'Failed to generate words')
       setWords(prev => {
@@ -309,9 +310,13 @@ export default function Home({ user }) {
               <>
                 <h1 className="text-2xl font-semibold mb-2 text-foreground">Let&apos;s personalise your Spanish</h1>
                 <p className="text-muted-foreground text-sm mb-8">Six quick questions so we can build a vocabulary set that matches your life.</p>
-                <Button onClick={() => setStep(1)} className="w-full h-12 rounded-xl text-base">
-                  Get started
+                <Button asChild className="w-full h-12 rounded-xl text-base mb-2">
+                  <Link href="/login?next=/&mode=signup">Get started</Link>
                 </Button>
+                <p className="text-sm text-muted-foreground text-center">
+                  Already have an account?{' '}
+                  <Link href="/login?next=/" className="font-medium text-primary hover:underline">Log in</Link>
+                </p>
               </>
             )}
           </div>

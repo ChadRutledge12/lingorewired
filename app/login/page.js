@@ -13,7 +13,7 @@ function LoginForm() {
   const params = useSearchParams()
   const next = params.get('next') || '/decks'
 
-  const [mode, setMode] = useState('login')
+  const [mode, setMode] = useState(params.get('mode') === 'signup' ? 'signup' : 'login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')

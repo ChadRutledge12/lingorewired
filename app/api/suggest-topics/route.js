@@ -1,4 +1,14 @@
+import { createClient } from '@/lib/supabase/server'
+
 export async function POST(request) {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) {
+    return Response.json({ error: 'Not authenticated' }, { status: 401 })
+  }
+
   const profile = await request.json()
 
   const requiredArrays = ['goals', 'interests', 'contexts']
