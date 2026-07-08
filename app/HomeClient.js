@@ -1,0 +1,661 @@
+'use client'
+import { useState, useEffect } from 'react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { Loader2, X, Languages, PartyPopper, Save, Download } from 'lucide-react'
+import { exportDeckPdf } from '@/lib/exportPdf'
+import { normalizeWord } from '@/lib/normalizeWord'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Progress } from '@/components/ui/progress'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { Input } from '@/components/ui/input'
+import { Skeleton } from '@/components/ui/skeleton'
+import SpeakButton from '@/components/SpeakButton'
+import VoicePicker from '@/components/VoicePicker'
+import VoiceDebugInfo from '@/components/VoiceDebugInfo'
+import SuggestionsList from '@/components/SuggestionsList'
+import { useVoiceGender } from '@/lib/useVoiceGender'
+
+const LEVEL_OPTIONS = ['Complete beginner', 'A1 — I know a little', 'A2 — Basic phrases', 'B1 — Conversational', 'B2+ — Comfortable']
+const LANGUAGE_OPTIONS = ['English', 'French', 'Italian', 'Portuguese', 'German', 'Other']
+const GOAL_OPTIONS = ['Travel & get around', 'Work & business', 'Connect with locals', 'Living abroad', 'Academic study', 'Hobby / curiosity']
+const INTEREST_OPTIONS = ['Sport & fitness', 'Food & cooking', 'Music', 'Business & finance', 'Nature & outdoors', 'Tech', 'Art & culture', 'Health', 'Scuba diving', 'Law']
+const CONTEXT_OPTIONS = ['Restaurants & cafes', 'Meetings & offices', 'Outdoors & activities', 'Hotels & travel', 'Shops & markets', 'Social situations', 'Emergencies', 'Medical settings']
+const LOCATION_OPTIONS = ['Spain', 'Mexico', 'Argentina', 'Colombia', 'Latin America (general)', 'Not sure yet']
+
+const TIER_INFO = {
+  universal: {
+    classes: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    description: 'Essential for every Spanish speaker — the foundation.'
+  },
+  environment: {
+    classes: 'bg-primary/10 text-primary border-primary/20',
+    description: "Words for the specific situations you'll be in."
+  },
+  domain: {
+    classes: 'bg-amber-50 text-amber-700 border-amber-200',
+    description: 'Vocabulary from your world — your profession and interests.'
+  }
+}
+
+const chipClasses = 'h-auto rounded-full border px-4 py-2 text-sm font-medium transition data-[state=off]:border-border data-[state=off]:bg-transparent data-[state=off]:text-muted-foreground data-[state=off]:hover:bg-muted data-[state=off]:hover:text-foreground data-[state=on]:border-primary data-[state=on]:bg-primary/10 data-[state=on]:text-primary'
+
+function ChipGroup({ type, options, value, onChange }) {
+  return (
+    <ToggleGroup
+      type={type}
+      value={value}
+      onValueChange={(v) => {
+        if (type === 'single' && !v) return
+        onChange(v)
+      }}
+      className="mb-4 flex w-full flex-wrap justify-start gap-2"
+    >
+      {options.map(opt => (
+        <ToggleGroupItem key={opt} value={opt} className={chipClasses}>
+          {opt}
+        </ToggleGroupItem>
+      ))}
+    </ToggleGroup>
+  )
+}
+
+function CustomChipInput({ options, values, otherValue, onOtherChange, onAdd, onRemove }) {
+  const custom = values.filter(v => !options.includes(v))
+  return (
+    <>
+      {custom.length > 0 && (
+        <div className="mb-4 flex flex-wrap gap-2">
+          {custom.map(v => (
+            <Badge key={v} variant="secondary" className="h-auto gap-1 rounded-full py-1 pr-1.5 pl-3">
+              {v}
+              <button
+                type="button"
+                onClick={() => onRemove(v)}
+                aria-label={`Remove ${v}`}
+                className="rounded-full p-0.5 hover:bg-foreground/10">
+                <X className="size-3" />
+              </button>
+            </Badge>
+          ))}
+        </div>
+      )}
+      <div className="mb-6 flex gap-2">
+        <Input
+          placeholder="Something else? Type it here..."
+          value={otherValue}
+          onChange={e => onOtherChange(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); onAdd() } }}
+          className="rounded-full"
+        />
+        <Button type="button" variant="secondary" onClick={onAdd} className="shrink-0 rounded-full">
+          Add
+        </Button>
+      </div>
+    </>
+  )
+}
+
+function TierBadge({ tier }) {
+  const info = TIER_INFO[tier]
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Badge variant="outline" className={`cursor-help ${info?.classes || ''}`}>
+          {tier}
+        </Badge>
+      </TooltipTrigger>
+      <TooltipContent>{info?.description}</TooltipContent>
+    </Tooltip>
+  )
+}
+
+export default function Home({ user }) {
+  const router = useRouter()
+  const [step, setStep] = useState(0)
+  const [answers, setAnswers] = useState({
+    level: '',
+    nativeLanguage: '',
+    goals: [],
+    interests: [],
+    contexts: [],
+    location: ''
+  })
+  const [loading, setLoading] = useState(false)
+  const [words, setWords] = useState([])
+  const [suggestions, setSuggestions] = useState([])
+  const [error, setError] = useState('')
+  const [viewMode, setViewMode] = useState('flashcard')
+  const [cardIndex, setCardIndex] = useState(0)
+  const [cardFlipped, setCardFlipped] = useState(false)
+  const [saveOpen, setSaveOpen] = useState(false)
+  const [saveName, setSaveName] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState('')
+  const [savedDeckId, setSavedDeckId] = useState(null)
+  const [otherInputs, setOtherInputs] = useState({
+    goals: '',
+    interests: '',
+    contexts: ''
+  })
+  const { gender: voiceGender, setGender: setVoiceGender } = useVoiceGender()
+
+  const selectOne = (key, value) => {
+    setAnswers(prev => ({ ...prev, [key]: value }))
+  }
+
+  const setMany = (key, values) => {
+    setAnswers(prev => ({ ...prev, [key]: values }))
+  }
+
+  const toggleMany = (key, value) => {
+    setAnswers(prev => ({
+      ...prev,
+      [key]: prev[key].includes(value)
+        ? prev[key].filter(v => v !== value)
+        : [...prev[key], value]
+    }))
+  }
+
+  const addOther = (key) => {
+    const value = otherInputs[key].trim()
+    if (!value) return
+    setAnswers(prev => prev[key].includes(value) ? prev : { ...prev, [key]: [...prev[key], value] })
+    setOtherInputs(prev => ({ ...prev, [key]: '' }))
+  }
+
+  const generateWords = async (profileOverride) => {
+    const profile = profileOverride || answers
+    setLoading(true)
+    setError('')
+    setSavedDeckId(null)
+    setSaveOpen(false)
+    try {
+      const response = await fetch('/api/generate-words', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...profile,
+          addMore: step === 8,
+          existingWords: words.map(w => w.word).join(', ')
+        })
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || 'Failed to generate words')
+      setWords(prev => {
+        if (step !== 8) return data.words
+        const existing = prev.map(w => normalizeWord(w.word))
+        const filtered = data.words.filter(w => !existing.includes(normalizeWord(w.word)))
+        return [...prev, ...filtered]
+      })
+      if (step !== 8) setViewMode('flashcard')
+      setCardIndex(0)
+      setCardFlipped(false)
+      setStep(8)
+      generateSuggestions(profile, data.words)
+    } catch (error) {
+      console.error('Error:', error)
+      setError(error.message || 'Something went wrong generating your words. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const generateSuggestions = async (profile, generatedWords) => {
+    try {
+      const response = await fetch('/api/suggest-topics', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...profile,
+          currentWords: generatedWords.map(w => w.word).join(', ')
+        })
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || 'Failed to generate suggestions')
+      setSuggestions(data.suggestions)
+    } catch (error) {
+      console.error('Suggestions error:', error)
+    }
+  }
+
+  const addTopic = (topic) => {
+    const updated = { ...answers, interests: [...answers.interests, topic] }
+    setAnswers(updated)
+    generateWords(updated)
+  }
+
+  const defaultDeckName = () => {
+    const focus = answers.interests[0] || answers.location || 'Spanish'
+    return `${focus} · ${new Date().toLocaleDateString()}`
+  }
+
+  const saveDeck = async () => {
+    const name = saveName.trim()
+    if (!name) { setSaveError('Please name your deck'); return }
+    setSaving(true)
+    setSaveError('')
+    try {
+      const res = await fetch('/api/decks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, words, profile: answers }),
+      })
+      if (res.status === 401) { router.push('/login?next=/'); return }
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to save deck')
+      setSavedDeckId(data.deckId)
+      setSaveOpen(false)
+    } catch (err) {
+      setSaveError(err.message || 'Failed to save deck')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  useEffect(() => {
+    if (step !== 8 || viewMode !== 'flashcard') return
+    const handleKey = (e) => {
+      if (e.key === 'ArrowRight') {
+        setCardFlipped(false)
+        setCardIndex(i => Math.min(i + 1, words.length))
+      } else if (e.key === 'ArrowLeft') {
+        setCardFlipped(false)
+        setCardIndex(i => Math.max(i - 1, 0))
+      } else if (e.key === ' ' || e.key === 'Enter') {
+        e.preventDefault()
+        setCardFlipped(f => !f)
+      }
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [step, viewMode, words.length])
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-muted/40 p-4 sm:p-6">
+      <div className={`bg-card text-card-foreground rounded-2xl shadow-sm ring-1 ring-foreground/10 p-6 sm:p-8 w-full transition-[max-width] ${step === 8 && viewMode === 'list' ? 'max-w-2xl' : 'max-w-md'}`}>
+
+        {/* Progress dots */}
+        {step >= 1 && step <= 6 && (
+          <div className="flex gap-2 mb-8">
+            {[1,2,3,4,5,6].map(i => (
+              <div key={i} className={`h-1 flex-1 rounded-full transition-colors ${i < step ? 'bg-emerald-400' : i === step ? 'bg-primary' : 'bg-muted'}`} />
+            ))}
+          </div>
+        )}
+
+        {/* Step 0 — Welcome */}
+        {step === 0 && (
+          <div>
+            <div className="mb-4 flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <Languages className="size-6" />
+            </div>
+            {user ? (
+              <>
+                <h1 className="text-2xl font-semibold mb-2 text-foreground">Welcome back</h1>
+                <p className="text-muted-foreground text-sm mb-8">Jump back into your saved decks, or build a new vocabulary set.</p>
+                <Button asChild className="w-full h-12 rounded-xl text-base mb-2">
+                  <Link href="/decks">Continue learning →</Link>
+                </Button>
+                <Button variant="outline" onClick={() => setStep(1)} className="w-full h-12 rounded-xl text-base">
+                  Create a new set
+                </Button>
+              </>
+            ) : (
+              <>
+                <h1 className="text-2xl font-semibold mb-2 text-foreground">Let&apos;s personalise your Spanish</h1>
+                <p className="text-muted-foreground text-sm mb-8">Six quick questions so we can build a vocabulary set that matches your life.</p>
+                <Button onClick={() => setStep(1)} className="w-full h-12 rounded-xl text-base">
+                  Get started
+                </Button>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Step 1 — Level */}
+        {step === 1 && (
+          <div>
+            <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1">Step 1 of 6</p>
+            <h2 className="text-xl font-semibold mb-1 text-foreground">What&apos;s your current level?</h2>
+            <p className="text-muted-foreground text-sm mb-6">Be honest — we&apos;ll pitch the words at the right difficulty.</p>
+            <ChipGroup type="single" options={LEVEL_OPTIONS} value={answers.level} onChange={v => selectOne('level', v)} />
+            <div className="flex justify-between mt-4">
+              <Button variant="ghost" onClick={() => setStep(0)} className="text-muted-foreground">Back</Button>
+              <Button onClick={() => setStep(2)} disabled={!answers.level} className="rounded-xl">Continue</Button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 2 — Native language */}
+        {step === 2 && (
+          <div>
+            <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1">Step 2 of 6</p>
+            <h2 className="text-xl font-semibold mb-1 text-foreground">What&apos;s your native language?</h2>
+            <p className="text-muted-foreground text-sm mb-6">Helps us flag useful cognates and avoid common mistakes.</p>
+            <ChipGroup type="single" options={LANGUAGE_OPTIONS} value={answers.nativeLanguage} onChange={v => selectOne('nativeLanguage', v)} />
+            <div className="flex justify-between mt-4">
+              <Button variant="ghost" onClick={() => setStep(1)} className="text-muted-foreground">Back</Button>
+              <Button onClick={() => setStep(3)} disabled={!answers.nativeLanguage} className="rounded-xl">Continue</Button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 3 — Goals */}
+        {step === 3 && (
+          <div>
+            <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1">Step 3 of 6</p>
+            <h2 className="text-xl font-semibold mb-1 text-foreground">What&apos;s your main goal?</h2>
+            <p className="text-muted-foreground text-sm mb-6">Pick as many as apply.</p>
+            <ChipGroup type="multiple" options={GOAL_OPTIONS} value={answers.goals} onChange={v => setMany('goals', v)} />
+            <CustomChipInput
+              options={GOAL_OPTIONS}
+              values={answers.goals}
+              otherValue={otherInputs.goals}
+              onOtherChange={v => setOtherInputs(prev => ({ ...prev, goals: v }))}
+              onAdd={() => addOther('goals')}
+              onRemove={v => toggleMany('goals', v)}
+            />
+            <div className="flex justify-between">
+              <Button variant="ghost" onClick={() => setStep(2)} className="text-muted-foreground">Back</Button>
+              <Button onClick={() => setStep(4)} disabled={answers.goals.length === 0} className="rounded-xl">Continue</Button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 4 — Interests */}
+        {step === 4 && (
+          <div>
+            <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1">Step 4 of 6</p>
+            <h2 className="text-xl font-semibold mb-1 text-foreground">What are your interests?</h2>
+            <p className="text-muted-foreground text-sm mb-6">This is where it gets personal.</p>
+            <ChipGroup type="multiple" options={INTEREST_OPTIONS} value={answers.interests} onChange={v => setMany('interests', v)} />
+            <CustomChipInput
+              options={INTEREST_OPTIONS}
+              values={answers.interests}
+              otherValue={otherInputs.interests}
+              onOtherChange={v => setOtherInputs(prev => ({ ...prev, interests: v }))}
+              onAdd={() => addOther('interests')}
+              onRemove={v => toggleMany('interests', v)}
+            />
+            <div className="flex justify-between">
+              <Button variant="ghost" onClick={() => setStep(3)} className="text-muted-foreground">Back</Button>
+              <Button onClick={() => setStep(5)} disabled={answers.interests.length === 0} className="rounded-xl">Continue</Button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 5 — Contexts */}
+        {step === 5 && (
+          <div>
+            <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1">Step 5 of 6</p>
+            <h2 className="text-xl font-semibold mb-1 text-foreground">Where will you use Spanish?</h2>
+            <p className="text-muted-foreground text-sm mb-6">Think about the real situations you&apos;ll be in.</p>
+            <ChipGroup type="multiple" options={CONTEXT_OPTIONS} value={answers.contexts} onChange={v => setMany('contexts', v)} />
+            <CustomChipInput
+              options={CONTEXT_OPTIONS}
+              values={answers.contexts}
+              otherValue={otherInputs.contexts}
+              onOtherChange={v => setOtherInputs(prev => ({ ...prev, contexts: v }))}
+              onAdd={() => addOther('contexts')}
+              onRemove={v => toggleMany('contexts', v)}
+            />
+            <div className="flex justify-between">
+              <Button variant="ghost" onClick={() => setStep(4)} className="text-muted-foreground">Back</Button>
+              <Button onClick={() => setStep(6)} disabled={answers.contexts.length === 0} className="rounded-xl">Continue</Button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 6 — Location */}
+        {step === 6 && (
+          <div>
+            <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1">Step 6 of 6</p>
+            <h2 className="text-xl font-semibold mb-1 text-foreground">Where are you based or travelling to?</h2>
+            <p className="text-muted-foreground text-sm mb-6">Regional vocabulary varies between countries.</p>
+            <ChipGroup type="single" options={LOCATION_OPTIONS} value={answers.location} onChange={v => selectOne('location', v)} />
+            <div className="flex justify-between mt-4">
+              <Button variant="ghost" onClick={() => setStep(5)} className="text-muted-foreground">Back</Button>
+              <Button onClick={() => setStep(7)} disabled={!answers.location} className="rounded-xl">
+                Build my vocab set →
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 7 — Summary */}
+        {step === 7 && (
+          <div>
+            <h2 className="text-xl font-semibold mb-1 text-foreground">Here&apos;s your profile</h2>
+            <p className="text-muted-foreground text-sm mb-6">Ready to generate your personalised word set.</p>
+            <div className="space-y-3 mb-8">
+              {[
+                ['Level', answers.level],
+                ['Native language', answers.nativeLanguage],
+                ['Goals', answers.goals.join(', ')],
+                ['Interests', answers.interests.join(', ')],
+                ['Contexts', answers.contexts.join(', ')],
+                ['Location', answers.location],
+              ].map(([label, value]) => (
+                <div key={label} className="flex justify-between text-sm border-b border-border pb-3">
+                  <span className="text-muted-foreground">{label}</span>
+                  <span className="text-foreground font-medium text-right max-w-48">{value || '—'}</span>
+                </div>
+              ))}
+            </div>
+            {error && (
+              <Alert variant="destructive" className="mb-4">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+            <Button onClick={() => generateWords()} disabled={loading} className="w-full h-12 rounded-xl text-base">
+              {loading && <Loader2 className="size-4 animate-spin" />}
+              {loading ? 'Generating...' : 'Generate my words'}
+            </Button>
+            {loading && (
+              <div className="mt-6 space-y-3">
+                <Skeleton className="h-16 w-full rounded-xl" />
+                <Skeleton className="h-16 w-full rounded-xl" />
+                <Skeleton className="h-16 w-full rounded-xl" />
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Step 8 — Results */}
+        {step === 8 && (
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <h2 className="text-xl font-semibold text-foreground">Your vocabulary set</h2>
+              <Link href="/decks" className="text-sm font-medium text-primary hover:underline shrink-0">My decks →</Link>
+            </div>
+            <p className="text-muted-foreground text-sm mb-4">Personalised for you — start learning.</p>
+            <div className="flex flex-col sm:flex-row gap-2 mb-4">
+              <Button variant="outline" onClick={() => setStep(0)} className="rounded-xl">
+                Start over
+              </Button>
+              <Button onClick={() => generateWords()} disabled={loading} className="rounded-xl">
+                {loading && <Loader2 className="size-4 animate-spin" />}
+                {loading ? 'Adding...' : '+ Add 6 more words'}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => exportDeckPdf(defaultDeckName(), words)}
+                className="rounded-xl sm:w-auto">
+                <Download className="size-4" /> PDF
+              </Button>
+            </div>
+
+            {/* Save to deck */}
+            <div className="mb-4">
+              {savedDeckId ? (
+                <Alert>
+                  <AlertDescription className="flex items-center justify-between gap-2">
+                    <span>Saved to your decks.</span>
+                    <Link href={`/review/${savedDeckId}`} className="font-medium text-primary hover:underline shrink-0">Review now →</Link>
+                  </AlertDescription>
+                </Alert>
+              ) : saveOpen ? (
+                <div>
+                  <div className="flex gap-2">
+                    <Input
+                      value={saveName}
+                      onChange={(e) => setSaveName(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); saveDeck() } }}
+                      placeholder="Deck name"
+                      className="rounded-xl"
+                      autoFocus
+                    />
+                    <Button onClick={saveDeck} disabled={saving} className="shrink-0 rounded-xl">
+                      {saving && <Loader2 className="size-4 animate-spin" />}
+                      Save
+                    </Button>
+                  </div>
+                  {saveError && <p className="text-sm text-red-500 mt-1">{saveError}</p>}
+                </div>
+              ) : (
+                <Button
+                  variant="outline"
+                  onClick={() => { setSaveOpen(true); if (!saveName) setSaveName(defaultDeckName()) }}
+                  className="w-full rounded-xl">
+                  <Save className="size-4" /> Save these {words.length} words to a deck
+                </Button>
+              )}
+            </div>
+
+            {error && (
+              <Alert variant="destructive" className="mb-4">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+
+            {/* Mode toggle + pronunciation dialect */}
+            <div className="flex items-center justify-between gap-2 mb-6">
+              <Tabs value={viewMode} onValueChange={setViewMode}>
+                <TabsList className="grid grid-cols-2 w-full sm:w-72">
+                  <TabsTrigger value="flashcard">Flashcards</TabsTrigger>
+                  <TabsTrigger value="list">List</TabsTrigger>
+                </TabsList>
+              </Tabs>
+              <div className="flex items-center gap-1">
+                <VoicePicker gender={voiceGender} onChange={setVoiceGender} />
+                <VoiceDebugInfo />
+              </div>
+            </div>
+
+            {/* Flashcard mode */}
+            {viewMode === 'flashcard' && (
+              <div className="mx-auto max-w-md">
+                {cardIndex >= words.length ? (
+                <div className="text-center py-4">
+                  <PartyPopper className="mx-auto mb-2 size-10 text-primary" />
+                  <h3 className="text-lg font-semibold text-foreground mb-1">Batch complete!</h3>
+                  <p className="text-muted-foreground text-sm mb-6">You reviewed all {words.length} words.</p>
+                  <div className="flex flex-col sm:flex-row gap-2 mb-2">
+                    <Button variant="outline" onClick={() => { setCardIndex(0); setCardFlipped(false) }} className="flex-1 rounded-xl">
+                      Review again
+                    </Button>
+                    <Button onClick={() => setViewMode('list')} className="flex-1 rounded-xl">
+                      View as list
+                    </Button>
+                  </div>
+                  {suggestions.length > 0 && (
+                    <div className="mt-6 pt-6 border-t border-border text-left">
+                      <p className="text-xs text-muted-foreground uppercase tracking-widest mb-3">Suggested next topics</p>
+                      <SuggestionsList suggestions={suggestions} onSelect={addTopic} />
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div>
+                  {words[cardIndex] && (
+                    <div className="flashcard-scene h-64 mb-4">
+                      <div
+                        onClick={() => setCardFlipped(f => !f)}
+                        className={`flashcard relative w-full h-full cursor-pointer ${cardFlipped ? 'is-flipped' : ''}`}>
+                        <div className="flashcard-face absolute inset-0 rounded-2xl border border-border bg-card shadow-sm p-6 flex flex-col items-center justify-center text-center">
+                          <Badge variant="outline" className={`mb-4 ${TIER_INFO[words[cardIndex].tier]?.classes || ''}`}>
+                            {words[cardIndex].tier}
+                          </Badge>
+                          <div className="flex items-center gap-1 mb-2">
+                            <span className="text-2xl font-semibold text-foreground">{words[cardIndex].word}</span>
+                            <SpeakButton text={words[cardIndex].word} gender={voiceGender} />
+                          </div>
+                          <span className="text-sm text-muted-foreground italic">{words[cardIndex].part_of_speech}</span>
+                          <span className="text-xs text-muted-foreground/70 mt-6">Tap to reveal</span>
+                        </div>
+                        <div className="flashcard-face flashcard-face-back absolute inset-0 rounded-2xl border border-primary/20 bg-primary/5 p-6 flex flex-col items-center justify-center text-center">
+                          <span className="text-xl font-semibold text-foreground mb-1">{words[cardIndex].translation}</span>
+                          <span className="text-xs text-muted-foreground italic mb-4">{words[cardIndex].part_of_speech}</span>
+                          <div className="flex items-start gap-1">
+                            <span className="text-sm text-foreground/80 italic">{words[cardIndex].example}</span>
+                            <SpeakButton text={words[cardIndex].example} gender={voiceGender} className="shrink-0 -mt-1" />
+                          </div>
+                          <span className="text-xs text-muted-foreground italic mt-1">{words[cardIndex].example_translation}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  <Progress value={(cardIndex / words.length) * 100} className="mb-3" />
+                  <div className="flex items-center justify-between">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => { setCardFlipped(false); setCardIndex(i => Math.max(i - 1, 0)) }}
+                      disabled={cardIndex === 0}
+                      className="text-muted-foreground">
+                      ← Prev
+                    </Button>
+                    <span className="text-xs text-muted-foreground">{cardIndex + 1} / {words.length}</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => { setCardFlipped(false); setCardIndex(i => Math.min(i + 1, words.length)) }}
+                      className="text-primary hover:text-primary">
+                      Next →
+                    </Button>
+                  </div>
+                </div>
+                )}
+              </div>
+            )}
+
+            {/* List mode */}
+            {viewMode === 'list' && (
+              <div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {words.map((w, i) => (
+                    <div key={i} className="border border-border rounded-xl p-4">
+                      <div className="flex justify-between items-start mb-1">
+                        <div className="flex items-baseline gap-1.5">
+                          <span className="text-lg font-semibold text-foreground">{w.word}</span>
+                          <SpeakButton text={w.word} gender={voiceGender} />
+                          <span className="text-[11px] text-muted-foreground italic">{w.part_of_speech}</span>
+                        </div>
+                        <TierBadge tier={w.tier} />
+                      </div>
+                      <div className="text-sm text-muted-foreground mb-2">{w.translation}</div>
+                      <div className="text-sm text-foreground/80 border-l-2 border-border pl-3 italic mb-1">{w.example}</div>
+                      <div className="text-sm text-muted-foreground border-l-2 border-border pl-3 italic">{w.example_translation}</div>
+                    </div>
+                  ))}
+                </div>
+                {suggestions.length > 0 && (
+                  <div className="mt-6 pt-6 border-t border-border">
+                    <p className="text-xs text-muted-foreground uppercase tracking-widest mb-3">Suggested next topics</p>
+                    <SuggestionsList suggestions={suggestions} onSelect={addTopic} />
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+      </div>
+    </div>
+  )
+}

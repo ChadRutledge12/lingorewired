@@ -1,0 +1,393 @@
+'use client'
+import { useState } from 'react'
+import Link from 'next/link'
+import { ArrowLeft, Pencil, Trash2, Check, X, Loader2, Download, Sparkles, Share2, Lightbulb } from 'lucide-react'
+import { exportDeckPdf } from '@/lib/exportPdf'
+import WordCloud from '@/components/WordCloud'
+import SuggestionsList from '@/components/SuggestionsList'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
+import {
+  AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader,
+  AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction,
+} from '@/components/ui/alert-dialog'
+
+const TIER_CLASSES = {
+  universal: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  environment: 'bg-primary/10 text-primary border-primary/20',
+  domain: 'bg-amber-50 text-amber-700 border-amber-200',
+}
+
+const POS_OPTIONS = ['noun', 'verb', 'adjective', 'adverb', 'phrase', 'other']
+
+const EMPTY_DRAFT = { word: '', translation: '', part_of_speech: '', example: '', example_translation: '' }
+
+function DeckName({ deck }) {
+  const [savedName, setSavedName] = useState(deck.name)
+  const [renaming, setRenaming] = useState(false)
+  const [draft, setDraft] = useState(deck.name)
+  const [saving, setSaving] = useState(false)
+
+  const startRename = () => {
+    setDraft(savedName)
+    setRenaming(true)
+  }
+
+  const save = async () => {
+    const trimmed = draft.trim()
+    if (!trimmed || trimmed === savedName) { setRenaming(false); return }
+    setSaving(true)
+    try {
+      const res = await fetch(`/api/decks/${deck.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: trimmed }),
+      })
+      if (!res.ok) throw new Error()
+      setSavedName(trimmed)
+      setRenaming(false)
+    } catch {
+      // keep the form open so the user can retry
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (renaming) {
+    return (
+      <form onSubmit={(e) => { e.preventDefault(); save() }} className="flex items-center gap-1 flex-1">
+        <Input value={draft} onChange={(e) => setDraft(e.target.value)} autoFocus className="rounded-lg h-9" />
+        <Button type="submit" size="icon-sm" variant="ghost" disabled={saving} aria-label="Save name">
+          {saving ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
+        </Button>
+        <Button type="button" size="icon-sm" variant="ghost" onClick={() => setRenaming(false)} disabled={saving} aria-label="Cancel">
+          <X className="size-4" />
+        </Button>
+      </form>
+    )
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={startRename}
+      className="group flex items-center gap-1.5 text-left flex-1 min-w-0">
+      <h1 className="text-xl font-semibold text-foreground truncate">{savedName}</h1>
+      <Pencil className="size-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 shrink-0" />
+    </button>
+  )
+}
+
+function CardRow({ card, onSaved, onDeleted, onExplore }) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(EMPTY_DRAFT)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  const startEdit = () => {
+    setDraft({
+      word: card.word || '',
+      translation: card.translation || '',
+      part_of_speech: card.part_of_speech || 'other',
+      example: card.example || '',
+      example_translation: card.example_translation || '',
+    })
+    setError('')
+    setEditing(true)
+  }
+
+  const save = async () => {
+    setSaving(true)
+    setError('')
+    try {
+      const res = await fetch(`/api/cards/${card.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(draft),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to save')
+      onSaved(card.id, draft)
+      setEditing(false)
+    } catch (err) {
+      setError(err.message || 'Failed to save')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const remove = async () => {
+    const res = await fetch(`/api/cards/${card.id}`, { method: 'DELETE' })
+    if (res.ok) onDeleted(card.id)
+  }
+
+  if (editing) {
+    return (
+      <div className="border border-primary/30 rounded-xl p-4 space-y-2">
+        <div className="flex gap-2">
+          <Input value={draft.word} onChange={(e) => setDraft((d) => ({ ...d, word: e.target.value }))} placeholder="Word" className="rounded-lg" />
+          <Select value={draft.part_of_speech} onValueChange={(v) => setDraft((d) => ({ ...d, part_of_speech: v }))}>
+            <SelectTrigger size="sm" className="w-32 rounded-lg"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {POS_OPTIONS.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <Input value={draft.translation} onChange={(e) => setDraft((d) => ({ ...d, translation: e.target.value }))} placeholder="Translation" className="rounded-lg" />
+        <Input value={draft.example} onChange={(e) => setDraft((d) => ({ ...d, example: e.target.value }))} placeholder="Example sentence" className="rounded-lg" />
+        <Input value={draft.example_translation} onChange={(e) => setDraft((d) => ({ ...d, example_translation: e.target.value }))} placeholder="Example translation" className="rounded-lg" />
+        {error && <p className="text-sm text-red-500">{error}</p>}
+        <div className="flex gap-2 pt-1">
+          <Button size="sm" onClick={save} disabled={saving} className="rounded-lg">
+            {saving && <Loader2 className="size-3.5 animate-spin" />} Save
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => setEditing(false)} disabled={saving} className="rounded-lg">
+            Cancel
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="border border-border rounded-xl p-4">
+      <div className="flex justify-between items-start mb-1">
+        <div className="flex items-baseline gap-2 min-w-0">
+          <button
+            type="button"
+            onClick={() => onExplore(card)}
+            className="text-lg font-semibold text-foreground hover:text-primary hover:underline decoration-dotted underline-offset-4 truncate"
+            title="See related words">
+            {card.word}
+          </button>
+          <span className="text-[11px] text-muted-foreground italic shrink-0">{card.part_of_speech}</span>
+        </div>
+        <div className="flex items-center gap-1 shrink-0">
+          <Badge variant="outline" className={TIER_CLASSES[card.tier] || ''}>{card.tier}</Badge>
+          <Button size="icon-sm" variant="ghost" onClick={() => onExplore(card)} aria-label={`See words related to ${card.word}`} className="text-muted-foreground">
+            <Share2 className="size-3.5" />
+          </Button>
+          <Button size="icon-sm" variant="ghost" onClick={startEdit} aria-label={`Edit ${card.word}`} className="text-muted-foreground">
+            <Pencil className="size-3.5" />
+          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button size="icon-sm" variant="ghost" aria-label={`Delete ${card.word}`} className="text-muted-foreground hover:text-destructive">
+                <Trash2 className="size-3.5" />
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete &ldquo;{card.word}&rdquo;?</AlertDialogTitle>
+                <AlertDialogDescription>This removes the card and its review history. This can&apos;t be undone.</AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={(e) => { e.preventDefault(); remove() }} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
+      </div>
+      <div className="text-sm text-muted-foreground mb-2">{card.translation}</div>
+      <div className="text-sm text-foreground/80 border-l-2 border-border pl-3 italic mb-1">{card.example}</div>
+      <div className="text-sm text-muted-foreground border-l-2 border-border pl-3 italic">{card.example_translation}</div>
+    </div>
+  )
+}
+
+export default function DeckDetailClient({ deck, initialCards, dueCount }) {
+  const [cards, setCards] = useState(initialCards)
+  const [amplifying, setAmplifying] = useState(false)
+  const [amplifyError, setAmplifyError] = useState('')
+  const [exploreCard, setExploreCard] = useState(null)
+  const [exploreRelated, setExploreRelated] = useState(null)
+  const [exploreLoading, setExploreLoading] = useState(false)
+  const [exploreError, setExploreError] = useState('')
+  const [suggestions, setSuggestions] = useState([])
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false)
+  const [suggestionsError, setSuggestionsError] = useState('')
+  const [addingTopic, setAddingTopic] = useState('')
+
+  const handleSaved = (id, draft) => {
+    setCards((prev) => prev.map((c) => (c.id === id ? { ...c, ...draft } : c)))
+  }
+  const handleDeleted = (id) => {
+    setCards((prev) => prev.filter((c) => c.id !== id))
+  }
+
+  const fetchRelated = async (card) => {
+    setExploreLoading(true)
+    setExploreError('')
+    try {
+      const res = await fetch(`/api/cards/${card.id}/related`, { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to generate related words')
+      setExploreRelated(data.related)
+      setCards((prev) => prev.map((c) => (c.id === card.id ? { ...c, related_words: data.related } : c)))
+    } catch (err) {
+      setExploreError(err.message || 'Failed to generate related words')
+    } finally {
+      setExploreLoading(false)
+    }
+  }
+
+  const openExplore = (card) => {
+    setExploreCard(card)
+    setExploreError('')
+    if (card.related_words) {
+      setExploreRelated(card.related_words)
+    } else {
+      setExploreRelated(null)
+      fetchRelated(card)
+    }
+  }
+
+  const amplifyDeck = async () => {
+    setAmplifying(true)
+    setAmplifyError('')
+    try {
+      const res = await fetch(`/api/decks/${deck.id}/amplify`, { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to add related words')
+      if (data.cards.length === 0) {
+        setAmplifyError("Couldn't generate any new related words right now — try again in a moment.")
+      } else {
+        setCards((prev) => [...prev, ...data.cards])
+      }
+    } catch (err) {
+      setAmplifyError(err.message || 'Failed to add related words')
+    } finally {
+      setAmplifying(false)
+    }
+  }
+
+  const fetchSuggestions = async () => {
+    setSuggestionsLoading(true)
+    setSuggestionsError('')
+    try {
+      const res = await fetch(`/api/decks/${deck.id}/suggest-topics`, { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to generate suggestions')
+      setSuggestions(data.suggestions)
+    } catch (err) {
+      setSuggestionsError(err.message || 'Failed to generate suggestions')
+    } finally {
+      setSuggestionsLoading(false)
+    }
+  }
+
+  const addSuggestedTopic = async (topic) => {
+    setAddingTopic(topic)
+    setAmplifyError('')
+    try {
+      const res = await fetch(`/api/decks/${deck.id}/amplify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ topic }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to add words for that topic')
+      setCards((prev) => [...prev, ...data.cards])
+      setSuggestions((prev) => prev.filter((s) => s.topic !== topic))
+    } catch (err) {
+      setAmplifyError(err.message || 'Failed to add words for that topic')
+    } finally {
+      setAddingTopic('')
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-muted/40 p-4 sm:p-6">
+      <div className="mx-auto w-full max-w-2xl">
+        <Link href="/decks" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4">
+          <ArrowLeft className="size-3.5" /> Back to decks
+        </Link>
+
+        <div className="mb-3 flex items-center gap-2">
+          <DeckName deck={deck} />
+          {dueCount > 0 && (
+            <Button asChild className="rounded-xl shrink-0">
+              <Link href={`/review/${deck.id}`}>Review {dueCount} now</Link>
+            </Button>
+          )}
+        </div>
+
+        <div className={`flex flex-wrap gap-2 ${amplifyError ? 'mb-1' : 'mb-6'}`}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={amplifyDeck}
+            disabled={amplifying}
+            className="rounded-xl">
+            {amplifying ? <Loader2 className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />}
+            {amplifying ? 'Adding related words...' : 'Amplify deck'}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => exportDeckPdf(deck.name, cards)}
+            disabled={cards.length === 0}
+            className="rounded-xl">
+            <Download className="size-3.5" /> Download PDF
+          </Button>
+        </div>
+        {amplifyError && <p className="text-sm text-red-500 mb-6">{amplifyError}</p>}
+
+        {cards.length === 0 ? (
+          <div className="rounded-2xl bg-card ring-1 ring-foreground/10 p-8 text-center text-muted-foreground">
+            No cards left in this deck.
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {cards.map((card) => (
+              <CardRow key={card.id} card={card} onSaved={handleSaved} onDeleted={handleDeleted} onExplore={openExplore} />
+            ))}
+          </div>
+        )}
+
+        {cards.length > 0 && (
+          <div className="mt-6 pt-6 border-t border-border">
+            {suggestions.length > 0 ? (
+              <>
+                <p className="text-xs text-muted-foreground uppercase tracking-widest mb-3">Suggested next topics</p>
+                <SuggestionsList suggestions={suggestions} onSelect={addSuggestedTopic} />
+                {addingTopic && (
+                  <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Loader2 className="size-3 animate-spin" /> Adding words for &ldquo;{addingTopic}&rdquo;...
+                  </p>
+                )}
+              </>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={fetchSuggestions}
+                disabled={suggestionsLoading}
+                className="rounded-xl">
+                {suggestionsLoading ? <Loader2 className="size-3.5 animate-spin" /> : <Lightbulb className="size-3.5" />}
+                {suggestionsLoading ? 'Thinking of ideas...' : 'Suggest topics'}
+              </Button>
+            )}
+            {suggestionsError && <p className="mt-2 text-sm text-red-500">{suggestionsError}</p>}
+          </div>
+        )}
+      </div>
+
+      {exploreCard && (
+        <WordCloud
+          card={exploreCard}
+          related={exploreRelated}
+          loading={exploreLoading}
+          error={exploreError}
+          onClose={() => setExploreCard(null)}
+          onRetry={() => fetchRelated(exploreCard)}
+        />
+      )}
+    </div>
+  )
+}
