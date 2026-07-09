@@ -31,6 +31,8 @@ export default async function AllReviewPage() {
     example: c.example,
     example_translation: c.example_translation,
     tier: c.tier,
+    state: c.state,
+    stability: c.stability,
     deckName: deckNameById[c.deck_id],
     intervals: previewIntervals(c, now),
   }))

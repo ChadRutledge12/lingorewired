@@ -16,6 +16,7 @@ import { useVoiceGender } from '@/lib/useVoiceGender'
 import { useReviewMode } from '@/lib/useReviewMode'
 import { speak } from '@/lib/speech'
 import { buildCloze } from '@/lib/clozeBlank'
+import { masteryOf } from '@/lib/mastery'
 
 const TIER_CLASSES = {
   universal: 'bg-emerald-50 text-emerald-700 border-emerald-200',
@@ -84,6 +85,12 @@ export default function ReviewClient({ deckId, deckName, initialCards }) {
   // cloze (may be a conjugated form, e.g. "como" not "comer"), the dictionary
   // word otherwise.
   const targetWord = cloze ? cloze.blank : current?.word
+  // Adaptive difficulty: words you barely know get a first-letter + length
+  // hint; Familiar/Mastered words get nothing — recall should stay hard
+  // exactly when it's productive for it to be hard.
+  const clozeHint = cloze && current && masteryOf(current).level <= 2
+    ? `starts with “${cloze.blank[0]}” · ${cloze.blank.length} letters`
+    : null
 
   const resetCardState = () => {
     setFlipped(false)
@@ -204,9 +211,11 @@ export default function ReviewClient({ deckId, deckName, initialCards }) {
                     {current.deckName && (
                       <span className="text-[11px] text-muted-foreground mb-2">{current.deckName}</span>
                     )}
-                    <Badge variant="outline" className={`mb-4 ${TIER_CLASSES[current.tier] || ''}`}>
-                      {current.tier}
-                    </Badge>
+                    {current.tier && (
+                      <Badge variant="outline" className={`mb-4 ${TIER_CLASSES[current.tier] || ''}`}>
+                        {current.tier}
+                      </Badge>
+                    )}
                     <div className="flex items-center gap-1 mb-2">
                       <span className="text-2xl font-semibold text-foreground">{current.word}</span>
                       <SpeakButton text={current.word} gender={voiceGender} />
@@ -230,9 +239,11 @@ export default function ReviewClient({ deckId, deckName, initialCards }) {
                 {current.deckName && (
                   <span className="text-[11px] text-muted-foreground mb-2">{current.deckName}</span>
                 )}
-                <Badge variant="outline" className={`mx-auto mb-4 ${TIER_CLASSES[current.tier] || ''}`}>
-                  {current.tier}
-                </Badge>
+                {current.tier && (
+                  <Badge variant="outline" className={`mx-auto mb-4 ${TIER_CLASSES[current.tier] || ''}`}>
+                    {current.tier}
+                  </Badge>
+                )}
 
                 {mode === 'listen' ? (
                   <div className="flex flex-col items-center mb-4">
@@ -254,7 +265,8 @@ export default function ReviewClient({ deckId, deckName, initialCards }) {
                       <span className="inline-block min-w-16 border-b-2 border-primary/40 align-bottom">&nbsp;</span>
                       {cloze.after}
                     </p>
-                    <span className="text-xs text-muted-foreground italic mb-4">{current.example_translation}</span>
+                    <span className={`text-xs text-muted-foreground italic ${clozeHint ? 'mb-1' : 'mb-4'}`}>{current.example_translation}</span>
+                    {clozeHint && <span className="text-xs text-primary/80 mb-4">{clozeHint}</span>}
                   </>
                 ) : (
                   <>

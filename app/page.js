@@ -10,5 +10,19 @@ export default async function Page() {
     data: { user },
   } = await supabase.auth.getUser()
 
-  return <HomeClient user={user} />
+  // The most recent saved profile seeds the next deck's questionnaire, so
+  // returning learners edit their answers instead of re-entering them.
+  let lastProfile = null
+  if (user) {
+    const { data } = await supabase
+      .from('decks')
+      .select('profile')
+      .not('profile', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    lastProfile = data?.profile || null
+  }
+
+  return <HomeClient user={user} lastProfile={lastProfile} />
 }

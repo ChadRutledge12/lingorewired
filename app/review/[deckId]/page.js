@@ -43,6 +43,8 @@ export default async function ReviewPage({ params, searchParams }) {
     example: c.example,
     example_translation: c.example_translation,
     tier: c.tier,
+    state: c.state,
+    stability: c.stability,
     intervals: previewIntervals(c, now),
   }))
 

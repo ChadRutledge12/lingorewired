@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Loader2, X, Languages, PartyPopper, Save, Download } from 'lucide-react'
+import { Loader2, X, PartyPopper, Save, Download, LogOut, Pencil, Plus } from 'lucide-react'
 import { exportDeckPdf } from '@/lib/exportPdf'
 import { normalizeWord } from '@/lib/normalizeWord'
 import { Button } from '@/components/ui/button'
@@ -18,6 +18,7 @@ import SpeakButton from '@/components/SpeakButton'
 import VoicePicker from '@/components/VoicePicker'
 import VoiceDebugInfo from '@/components/VoiceDebugInfo'
 import SuggestionsList from '@/components/SuggestionsList'
+import Logo from '@/components/Logo'
 import { useVoiceGender } from '@/lib/useVoiceGender'
 
 const LEVEL_OPTIONS = ['Complete beginner', 'A1 — I know a little', 'A2 — Basic phrases', 'B1 — Conversational', 'B2+ — Comfortable']
@@ -114,17 +115,23 @@ function TierBadge({ tier }) {
   )
 }
 
-export default function Home({ user }) {
+const EMPTY_ANSWERS = {
+  level: '',
+  nativeLanguage: '',
+  goals: [],
+  interests: [],
+  contexts: [],
+  location: ''
+}
+
+export default function Home({ user, lastProfile }) {
   const router = useRouter()
   const [step, setStep] = useState(0)
-  const [answers, setAnswers] = useState({
-    level: '',
-    nativeLanguage: '',
-    goals: [],
-    interests: [],
-    contexts: [],
-    location: ''
-  })
+  const [answers, setAnswers] = useState(EMPTY_ANSWERS)
+  // True while editing one field from the summary — Continue/Back then
+  // return straight to the summary instead of marching through every step.
+  const [editReturn, setEditReturn] = useState(false)
+  const [focusTopic, setFocusTopic] = useState('')
   const [loading, setLoading] = useState(false)
   const [words, setWords] = useState([])
   const [suggestions, setSuggestions] = useState([])
@@ -166,6 +173,36 @@ export default function Home({ user }) {
     if (!value) return
     setAnswers(prev => prev[key].includes(value) ? prev : { ...prev, [key]: [...prev[key], value] })
     setOtherInputs(prev => ({ ...prev, [key]: '' }))
+  }
+
+  // Returning users skip the questionnaire: their last deck's profile is
+  // preloaded and they land on the summary, where any field can be edited.
+  const startNewSet = () => {
+    if (lastProfile) {
+      setAnswers({ ...EMPTY_ANSWERS, ...lastProfile })
+      setStep(7)
+    } else {
+      setStep(1)
+    }
+  }
+
+  // Step navigation that understands "I'm just editing one answer".
+  const goNext = (next) => {
+    if (editReturn) { setEditReturn(false); setStep(7) } else { setStep(next) }
+  }
+  const goBack = (prev) => {
+    if (editReturn) { setEditReturn(false); setStep(7) } else { setStep(prev) }
+  }
+  const editField = (targetStep) => {
+    setEditReturn(true)
+    setStep(targetStep)
+  }
+
+  const addFocusTopic = () => {
+    const value = focusTopic.trim()
+    if (!value) return
+    setAnswers(prev => prev.interests.includes(value) ? prev : { ...prev, interests: [...prev.interests, value] })
+    setFocusTopic('')
   }
 
   const generateWords = async (profileOverride) => {
@@ -292,8 +329,15 @@ export default function Home({ user }) {
         {/* Step 0 — Welcome */}
         {step === 0 && (
           <div>
-            <div className="mb-4 flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary">
-              <Languages className="size-6" />
+            <div className="mb-6 flex items-start justify-between gap-2">
+              <Logo />
+              {user && (
+                <form action="/auth/signout" method="post">
+                  <Button type="submit" variant="ghost" size="sm" className="text-muted-foreground -mr-2 -mt-1">
+                    <LogOut className="size-3.5" /> Sign out
+                  </Button>
+                </form>
+              )}
             </div>
             {user ? (
               <>
@@ -302,7 +346,7 @@ export default function Home({ user }) {
                 <Button asChild className="w-full h-12 rounded-xl text-base mb-2">
                   <Link href="/decks">Continue learning →</Link>
                 </Button>
-                <Button variant="outline" onClick={() => setStep(1)} className="w-full h-12 rounded-xl text-base">
+                <Button variant="outline" onClick={startNewSet} className="w-full h-12 rounded-xl text-base">
                   Create a new set
                 </Button>
               </>
@@ -330,8 +374,8 @@ export default function Home({ user }) {
             <p className="text-muted-foreground text-sm mb-6">Be honest — we&apos;ll pitch the words at the right difficulty.</p>
             <ChipGroup type="single" options={LEVEL_OPTIONS} value={answers.level} onChange={v => selectOne('level', v)} />
             <div className="flex justify-between mt-4">
-              <Button variant="ghost" onClick={() => setStep(0)} className="text-muted-foreground">Back</Button>
-              <Button onClick={() => setStep(2)} disabled={!answers.level} className="rounded-xl">Continue</Button>
+              <Button variant="ghost" onClick={() => goBack(0)} className="text-muted-foreground">Back</Button>
+              <Button onClick={() => goNext(2)} disabled={!answers.level} className="rounded-xl">{editReturn ? 'Done' : 'Continue'}</Button>
             </div>
           </div>
         )}
@@ -344,8 +388,8 @@ export default function Home({ user }) {
             <p className="text-muted-foreground text-sm mb-6">Helps us flag useful cognates and avoid common mistakes.</p>
             <ChipGroup type="single" options={LANGUAGE_OPTIONS} value={answers.nativeLanguage} onChange={v => selectOne('nativeLanguage', v)} />
             <div className="flex justify-between mt-4">
-              <Button variant="ghost" onClick={() => setStep(1)} className="text-muted-foreground">Back</Button>
-              <Button onClick={() => setStep(3)} disabled={!answers.nativeLanguage} className="rounded-xl">Continue</Button>
+              <Button variant="ghost" onClick={() => goBack(1)} className="text-muted-foreground">Back</Button>
+              <Button onClick={() => goNext(3)} disabled={!answers.nativeLanguage} className="rounded-xl">{editReturn ? 'Done' : 'Continue'}</Button>
             </div>
           </div>
         )}
@@ -366,8 +410,8 @@ export default function Home({ user }) {
               onRemove={v => toggleMany('goals', v)}
             />
             <div className="flex justify-between">
-              <Button variant="ghost" onClick={() => setStep(2)} className="text-muted-foreground">Back</Button>
-              <Button onClick={() => setStep(4)} disabled={answers.goals.length === 0} className="rounded-xl">Continue</Button>
+              <Button variant="ghost" onClick={() => goBack(2)} className="text-muted-foreground">Back</Button>
+              <Button onClick={() => goNext(4)} disabled={answers.goals.length === 0} className="rounded-xl">{editReturn ? 'Done' : 'Continue'}</Button>
             </div>
           </div>
         )}
@@ -388,8 +432,8 @@ export default function Home({ user }) {
               onRemove={v => toggleMany('interests', v)}
             />
             <div className="flex justify-between">
-              <Button variant="ghost" onClick={() => setStep(3)} className="text-muted-foreground">Back</Button>
-              <Button onClick={() => setStep(5)} disabled={answers.interests.length === 0} className="rounded-xl">Continue</Button>
+              <Button variant="ghost" onClick={() => goBack(3)} className="text-muted-foreground">Back</Button>
+              <Button onClick={() => goNext(5)} disabled={answers.interests.length === 0} className="rounded-xl">{editReturn ? 'Done' : 'Continue'}</Button>
             </div>
           </div>
         )}
@@ -410,8 +454,8 @@ export default function Home({ user }) {
               onRemove={v => toggleMany('contexts', v)}
             />
             <div className="flex justify-between">
-              <Button variant="ghost" onClick={() => setStep(4)} className="text-muted-foreground">Back</Button>
-              <Button onClick={() => setStep(6)} disabled={answers.contexts.length === 0} className="rounded-xl">Continue</Button>
+              <Button variant="ghost" onClick={() => goBack(4)} className="text-muted-foreground">Back</Button>
+              <Button onClick={() => goNext(6)} disabled={answers.contexts.length === 0} className="rounded-xl">{editReturn ? 'Done' : 'Continue'}</Button>
             </div>
           </div>
         )}
@@ -424,7 +468,7 @@ export default function Home({ user }) {
             <p className="text-muted-foreground text-sm mb-6">Regional vocabulary varies between countries.</p>
             <ChipGroup type="single" options={LOCATION_OPTIONS} value={answers.location} onChange={v => selectOne('location', v)} />
             <div className="flex justify-between mt-4">
-              <Button variant="ghost" onClick={() => setStep(5)} className="text-muted-foreground">Back</Button>
+              <Button variant="ghost" onClick={() => goBack(5)} className="text-muted-foreground">Back</Button>
               <Button onClick={() => setStep(7)} disabled={!answers.location} className="rounded-xl">
                 Build my vocab set →
               </Button>
@@ -436,21 +480,48 @@ export default function Home({ user }) {
         {step === 7 && (
           <div>
             <h2 className="text-xl font-semibold mb-1 text-foreground">Here&apos;s your profile</h2>
-            <p className="text-muted-foreground text-sm mb-6">Ready to generate your personalised word set.</p>
-            <div className="space-y-3 mb-8">
+            <p className="text-muted-foreground text-sm mb-6">
+              {lastProfile ? 'Carried over from your last set — tweak anything before generating.' : 'Ready to generate your personalised word set.'}
+            </p>
+            <div className="space-y-3 mb-6">
               {[
-                ['Level', answers.level],
-                ['Native language', answers.nativeLanguage],
-                ['Goals', answers.goals.join(', ')],
-                ['Interests', answers.interests.join(', ')],
-                ['Contexts', answers.contexts.join(', ')],
-                ['Location', answers.location],
-              ].map(([label, value]) => (
-                <div key={label} className="flex justify-between text-sm border-b border-border pb-3">
-                  <span className="text-muted-foreground">{label}</span>
-                  <span className="text-foreground font-medium text-right max-w-48">{value || '—'}</span>
+                ['Level', answers.level, 1],
+                ['Native language', answers.nativeLanguage, 2],
+                ['Goals', answers.goals.join(', '), 3],
+                ['Interests', answers.interests.join(', '), 4],
+                ['Contexts', answers.contexts.join(', '), 5],
+                ['Location', answers.location, 6],
+              ].map(([label, value, editStep]) => (
+                <div key={label} className="flex items-start justify-between gap-2 text-sm border-b border-border pb-3">
+                  <span className="text-muted-foreground shrink-0">{label}</span>
+                  <button
+                    type="button"
+                    onClick={() => editField(editStep)}
+                    aria-label={`Edit ${label}`}
+                    className="group flex items-center gap-1.5 text-right min-w-0">
+                    <span className="text-foreground font-medium">{value || '—'}</span>
+                    <Pencil className="size-3 shrink-0 text-muted-foreground opacity-40 group-hover:opacity-100" />
+                  </button>
                 </div>
               ))}
+            </div>
+
+            {/* Cumulative learning: point the next set somewhere specific
+                without redoing the whole questionnaire. */}
+            <div className="mb-8">
+              <p className="text-xs text-muted-foreground uppercase tracking-widest mb-2">Want to focus on something next?</p>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="e.g. medical vocabulary, job interviews..."
+                  value={focusTopic}
+                  onChange={e => setFocusTopic(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addFocusTopic() } }}
+                  className="rounded-full"
+                />
+                <Button type="button" variant="secondary" onClick={addFocusTopic} disabled={!focusTopic.trim()} className="shrink-0 rounded-full">
+                  <Plus className="size-4" /> Add
+                </Button>
+              </div>
             </div>
             {error && (
               <Alert variant="destructive" className="mb-4">

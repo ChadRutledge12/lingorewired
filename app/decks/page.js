@@ -7,6 +7,7 @@ import { computeStats } from '@/lib/stats'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import DeleteDeckButton from './DeleteDeckButton'
+import NewEmptyDeckButton from './NewEmptyDeckButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -69,6 +70,7 @@ export default async function DecksPage() {
             <Button asChild variant="outline" className="rounded-xl">
               <Link href="/"><Plus className="size-4" /> New set</Link>
             </Button>
+            <NewEmptyDeckButton />
             <form action="/auth/signout" method="post">
               <Button type="submit" variant="ghost" className="text-muted-foreground">Sign out</Button>
             </form>

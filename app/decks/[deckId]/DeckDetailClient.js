@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Pencil, Trash2, Check, X, Loader2, Download, Sparkles, Share2, Lightbulb } from 'lucide-react'
+import { ArrowLeft, Pencil, Trash2, Check, X, Loader2, Download, Sparkles, Share2, Lightbulb, Plus } from 'lucide-react'
 import { exportDeckPdf } from '@/lib/exportPdf'
 import { masteryOf } from '@/lib/mastery'
 import WordCloud from '@/components/WordCloud'
@@ -78,6 +78,66 @@ function DeckName({ deck }) {
       <h1 className="text-xl font-semibold text-foreground truncate">{savedName}</h1>
       <Pencil className="size-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 shrink-0" />
     </button>
+  )
+}
+
+// Manual card entry — the same fields the editor uses, starting blank.
+// Word is the only required field; everything else is optional so quick
+// textbook transcription stays quick.
+function AddCardForm({ deckId, onAdded, onCancel }) {
+  const [draft, setDraft] = useState({ ...EMPTY_DRAFT, part_of_speech: 'other' })
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  const save = async () => {
+    if (!draft.word.trim()) { setError('The Spanish word is required'); return }
+    setSaving(true)
+    setError('')
+    try {
+      const res = await fetch(`/api/decks/${deckId}/cards`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(draft),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to add card')
+      onAdded(data.card)
+      // Keep the form open with cleared fields — adding a list of words
+      // from a textbook shouldn't need a click between every entry.
+      setDraft({ ...EMPTY_DRAFT, part_of_speech: 'other' })
+    } catch (err) {
+      setError(err.message || 'Failed to add card')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <form
+      onSubmit={(e) => { e.preventDefault(); save() }}
+      className="border border-primary/30 rounded-xl p-4 space-y-2">
+      <div className="flex gap-2">
+        <Input autoFocus value={draft.word} onChange={(e) => setDraft((d) => ({ ...d, word: e.target.value }))} placeholder="Spanish word *" className="rounded-lg" />
+        <Select value={draft.part_of_speech} onValueChange={(v) => setDraft((d) => ({ ...d, part_of_speech: v }))}>
+          <SelectTrigger size="sm" className="w-32 rounded-lg"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {POS_OPTIONS.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
+      <Input value={draft.translation} onChange={(e) => setDraft((d) => ({ ...d, translation: e.target.value }))} placeholder="Translation" className="rounded-lg" />
+      <Input value={draft.example} onChange={(e) => setDraft((d) => ({ ...d, example: e.target.value }))} placeholder="Example sentence (optional)" className="rounded-lg" />
+      <Input value={draft.example_translation} onChange={(e) => setDraft((d) => ({ ...d, example_translation: e.target.value }))} placeholder="Example translation (optional)" className="rounded-lg" />
+      {error && <p className="text-sm text-red-500">{error}</p>}
+      <div className="flex gap-2 pt-1">
+        <Button type="submit" size="sm" disabled={saving} className="rounded-lg">
+          {saving ? <Loader2 className="size-3.5 animate-spin" /> : <Plus className="size-3.5" />} Add card
+        </Button>
+        <Button type="button" size="sm" variant="ghost" onClick={onCancel} disabled={saving} className="rounded-lg">
+          Done
+        </Button>
+      </div>
+    </form>
   )
 }
 
@@ -174,7 +234,7 @@ function CardRow({ card, onSaved, onDeleted, onExplore }) {
             <span className={`size-1.5 rounded-full ${mastery.dotClass}`} />
             {mastery.label}
           </span>
-          <Badge variant="outline" className={TIER_CLASSES[card.tier] || ''}>{card.tier}</Badge>
+          {card.tier && <Badge variant="outline" className={TIER_CLASSES[card.tier] || ''}>{card.tier}</Badge>}
           <Button size="icon-sm" variant="ghost" onClick={() => onExplore(card)} aria-label={`See words related to ${card.word}`} className="text-muted-foreground">
             <Share2 className="size-3.5" />
           </Button>
@@ -221,6 +281,7 @@ export default function DeckDetailClient({ deck, initialCards, dueCount }) {
   const [suggestionsLoading, setSuggestionsLoading] = useState(false)
   const [suggestionsError, setSuggestionsError] = useState('')
   const [addingTopic, setAddingTopic] = useState('')
+  const [addingCard, setAddingCard] = useState(false)
 
   const handleSaved = (id, draft) => {
     setCards((prev) => prev.map((c) => (c.id === id ? { ...c, ...draft } : c)))
@@ -339,6 +400,14 @@ export default function DeckDetailClient({ deck, initialCards, dueCount }) {
           <Button
             variant="outline"
             size="sm"
+            onClick={() => setAddingCard(true)}
+            disabled={addingCard}
+            className="rounded-xl">
+            <Plus className="size-3.5" /> Add card
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => exportDeckPdf(deck.name, cards)}
             disabled={cards.length === 0}
             className="rounded-xl">
@@ -347,9 +416,23 @@ export default function DeckDetailClient({ deck, initialCards, dueCount }) {
         </div>
         {amplifyError && <p className="text-sm text-red-500 mb-6">{amplifyError}</p>}
 
-        {cards.length === 0 ? (
-          <div className="rounded-2xl bg-card ring-1 ring-foreground/10 p-8 text-center text-muted-foreground">
-            No cards left in this deck.
+        {addingCard && (
+          <div className="mb-3">
+            <AddCardForm
+              deckId={deck.id}
+              onAdded={(card) => setCards((prev) => [...prev, card])}
+              onCancel={() => setAddingCard(false)}
+            />
+          </div>
+        )}
+
+        {cards.length === 0 && !addingCard ? (
+          <div className="rounded-2xl bg-card ring-1 ring-foreground/10 p-8 text-center">
+            <p className="text-foreground font-medium mb-1">This deck is empty</p>
+            <p className="text-sm text-muted-foreground mb-4">Add your own vocabulary — from a textbook, class, or anywhere else.</p>
+            <Button onClick={() => setAddingCard(true)} className="rounded-xl">
+              <Plus className="size-4" /> Add your first card
+            </Button>
           </div>
         ) : (
           <div className="space-y-3">

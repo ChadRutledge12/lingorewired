@@ -19,9 +19,7 @@ export async function POST(request) {
   if (!name) {
     return Response.json({ error: 'Deck name is required' }, { status: 400 })
   }
-  if (words.length === 0) {
-    return Response.json({ error: 'No words to save' }, { status: 400 })
-  }
+  // words may be empty — manual decks start blank and get cards added by hand.
 
   const { data: deck, error: deckErr } = await supabase
     .from('decks')
@@ -30,6 +28,10 @@ export async function POST(request) {
     .single()
   if (deckErr) {
     return Response.json({ error: deckErr.message }, { status: 500 })
+  }
+
+  if (words.length === 0) {
+    return Response.json({ deckId: deck.id, count: 0 })
   }
 
   const now = new Date()

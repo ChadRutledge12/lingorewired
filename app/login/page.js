@@ -2,7 +2,8 @@
 import { Suspense, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Loader2, Languages, Eye, EyeOff, ArrowLeft } from 'lucide-react'
+import { Loader2, Eye, EyeOff, ArrowLeft } from 'lucide-react'
+import Logo from '@/components/Logo'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -57,9 +58,7 @@ function LoginForm() {
         <Link href="/" className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
           <ArrowLeft className="size-3.5" /> Back to app
         </Link>
-        <div className="mb-4 flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary">
-          <Languages className="size-6" />
-        </div>
+        <Logo className="mb-5" />
         <h1 className="text-2xl font-semibold mb-1 text-foreground">
           {mode === 'login' ? 'Welcome back' : 'Create your account'}
         </h1>
