@@ -196,7 +196,7 @@ export default function ReviewClient({ deckId, deckName, initialCards }) {
             <Progress value={(index / cards.length) * 100} className="mb-4" />
 
             {mode === 'flip' ? (
-              <div className="flashcard-scene h-64 mb-4">
+              <div key={current.id} className="flashcard-scene card-enter h-64 mb-4">
                 <div
                   onClick={() => setFlipped((f) => !f)}
                   className={`flashcard relative w-full h-full cursor-pointer ${flipped ? 'is-flipped' : ''}`}>
@@ -226,7 +226,7 @@ export default function ReviewClient({ deckId, deckName, initialCards }) {
                 </div>
               </div>
             ) : (
-              <div className="rounded-2xl border border-border bg-card shadow-sm p-6 mb-4 text-center min-h-64 flex flex-col justify-center">
+              <div key={current.id} className="card-enter rounded-2xl border border-border bg-card shadow-sm p-6 mb-4 text-center min-h-64 flex flex-col justify-center">
                 {current.deckName && (
                   <span className="text-[11px] text-muted-foreground mb-2">{current.deckName}</span>
                 )}

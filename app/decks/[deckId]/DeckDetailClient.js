@@ -3,6 +3,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, Pencil, Trash2, Check, X, Loader2, Download, Sparkles, Share2, Lightbulb } from 'lucide-react'
 import { exportDeckPdf } from '@/lib/exportPdf'
+import { masteryOf } from '@/lib/mastery'
 import WordCloud from '@/components/WordCloud'
 import SuggestionsList from '@/components/SuggestionsList'
 import { Button } from '@/components/ui/button'
@@ -151,6 +152,8 @@ function CardRow({ card, onSaved, onDeleted, onExplore }) {
     )
   }
 
+  const mastery = masteryOf(card)
+
   return (
     <div className="border border-border rounded-xl p-4">
       <div className="flex justify-between items-start mb-1">
@@ -165,6 +168,12 @@ function CardRow({ card, onSaved, onDeleted, onExplore }) {
           <span className="text-[11px] text-muted-foreground italic shrink-0">{card.part_of_speech}</span>
         </div>
         <div className="flex items-center gap-1 shrink-0">
+          <span
+            title={`Mastery: ${mastery.label}`}
+            className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium ${mastery.badgeClass}`}>
+            <span className={`size-1.5 rounded-full ${mastery.dotClass}`} />
+            {mastery.label}
+          </span>
           <Badge variant="outline" className={TIER_CLASSES[card.tier] || ''}>{card.tier}</Badge>
           <Button size="icon-sm" variant="ghost" onClick={() => onExplore(card)} aria-label={`See words related to ${card.word}`} className="text-muted-foreground">
             <Share2 className="size-3.5" />

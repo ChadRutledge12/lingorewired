@@ -17,7 +17,7 @@ export default async function DeckDetailPage({ params }) {
 
   const { data: cards } = await supabase
     .from('cards')
-    .select('id, word, translation, part_of_speech, example, example_translation, tier, due')
+    .select('id, word, translation, part_of_speech, example, example_translation, tier, due, state, stability, related_words')
     .eq('deck_id', deckId)
     .order('created_at', { ascending: true })
 

@@ -70,6 +70,32 @@
   transform: rotateY(180deg);
 }
 
+/* Each new card slides up as it enters, so advancing through a review
+   session feels like progress instead of content snapping in place. */
+@keyframes card-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.card-enter {
+  animation: card-enter 0.25s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card-enter {
+    animation: none;
+  }
+  .flashcard {
+    transition: none;
+  }
+}
+
 :root {
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);

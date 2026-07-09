@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { Plus, Flame, Target, TrendingUp, BookOpen } from 'lucide-react'
+import { Plus, Flame, Target, TrendingUp, BookOpen, Cloud } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { humanInterval } from '@/lib/fsrs'
 import { computeStats } from '@/lib/stats'
@@ -90,8 +90,14 @@ export default async function DecksPage() {
         )}
 
         {totalDue > 0 && (
-          <Button asChild className="w-full rounded-xl h-12 text-base mb-6">
+          <Button asChild className="w-full rounded-xl h-12 text-base mb-3">
             <Link href="/review">Review all {totalDue} due now →</Link>
+          </Button>
+        )}
+
+        {stats.totalCards > 0 && (
+          <Button asChild variant="outline" className="w-full rounded-xl h-11 mb-6">
+            <Link href="/cloud"><Cloud className="size-4" /> Your word cloud — see what you know</Link>
           </Button>
         )}
 
