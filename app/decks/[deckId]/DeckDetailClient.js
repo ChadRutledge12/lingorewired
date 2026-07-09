@@ -1,7 +1,8 @@
 'use client'
 import { useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Pencil, Trash2, Check, X, Loader2, Download, Sparkles, Share2, Lightbulb, Plus } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { ArrowLeft, Pencil, Trash2, Check, X, Loader2, Download, Sparkles, Share2, Lightbulb, Plus, BookOpen } from 'lucide-react'
 import { exportDeckPdf } from '@/lib/exportPdf'
 import { masteryOf } from '@/lib/mastery'
 import WordCloud from '@/components/WordCloud'
@@ -270,7 +271,8 @@ function CardRow({ card, onSaved, onDeleted, onExplore }) {
   )
 }
 
-export default function DeckDetailClient({ deck, initialCards, dueCount }) {
+export default function DeckDetailClient({ deck, initialCards, dueCount, initialReadings = [] }) {
+  const router = useRouter()
   const [cards, setCards] = useState(initialCards)
   const [amplifying, setAmplifying] = useState(false)
   const [amplifyError, setAmplifyError] = useState('')
@@ -283,6 +285,30 @@ export default function DeckDetailClient({ deck, initialCards, dueCount }) {
   const [suggestionsError, setSuggestionsError] = useState('')
   const [addingTopic, setAddingTopic] = useState('')
   const [addingCard, setAddingCard] = useState(false)
+  const [readings] = useState(initialReadings)
+  const [readingPanelOpen, setReadingPanelOpen] = useState(false)
+  const [readingScenario, setReadingScenario] = useState('')
+  const [readingLength, setReadingLength] = useState('short')
+  const [creatingReading, setCreatingReading] = useState(false)
+  const [readingError, setReadingError] = useState('')
+
+  const createReading = async () => {
+    setCreatingReading(true)
+    setReadingError('')
+    try {
+      const res = await fetch(`/api/decks/${deck.id}/readings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scenario: readingScenario, length: readingLength }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to create reading')
+      router.push(`/readings/${data.readingId}`)
+    } catch (err) {
+      setReadingError(err.message || 'Failed to create reading')
+      setCreatingReading(false)
+    }
+  }
 
   const handleSaved = (id, draft) => {
     setCards((prev) => prev.map((c) => (c.id === id ? { ...c, ...draft } : c)))
@@ -410,6 +436,14 @@ export default function DeckDetailClient({ deck, initialCards, dueCount }) {
           <Button
             variant="outline"
             size="sm"
+            onClick={() => setReadingPanelOpen((o) => !o)}
+            disabled={cards.length === 0}
+            className="rounded-xl">
+            <BookOpen className="size-3.5" /> Create a reading
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => exportDeckPdf(deck.name, cards)}
             disabled={cards.length === 0}
             className="rounded-xl">
@@ -417,6 +451,56 @@ export default function DeckDetailClient({ deck, initialCards, dueCount }) {
           </Button>
         </div>
         {amplifyError && <p className="text-sm text-red-500 mb-6">{amplifyError}</p>}
+
+        {readingPanelOpen && (
+          <div className="mb-6 rounded-2xl border border-primary/30 p-4 space-y-3">
+            <div>
+              <p className="text-sm font-medium text-foreground">Turn this deck into a reading</p>
+              <p className="text-xs text-muted-foreground">A short Spanish story using your words in context — with tap-to-reveal translation and audio.</p>
+            </div>
+            <textarea
+              value={readingScenario}
+              onChange={(e) => setReadingScenario(e.target.value)}
+              placeholder="Set the scene (optional): a day at the market, a job interview, a chat with your abuela..."
+              rows={2}
+              className="w-full rounded-lg border border-border bg-transparent px-3 py-2 text-sm outline-none focus:border-primary"
+            />
+            <div className="flex flex-wrap items-center gap-2">
+              <Select value={readingLength} onValueChange={setReadingLength}>
+                <SelectTrigger size="sm" className="w-32 rounded-lg"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="short">Short</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button size="sm" onClick={createReading} disabled={creatingReading} className="rounded-lg">
+                {creatingReading ? <Loader2 className="size-3.5 animate-spin" /> : <BookOpen className="size-3.5" />}
+                {creatingReading ? 'Writing your story...' : 'Generate reading'}
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => setReadingPanelOpen(false)} disabled={creatingReading} className="rounded-lg">
+                Cancel
+              </Button>
+            </div>
+            {readingError && <p className="text-sm text-red-500">{readingError}</p>}
+          </div>
+        )}
+
+        {readings.length > 0 && (
+          <div className="mb-6">
+            <p className="text-xs text-muted-foreground uppercase tracking-widest mb-2">Readings</p>
+            <div className="space-y-2">
+              {readings.map((r) => (
+                <Link
+                  key={r.id}
+                  href={`/readings/${r.id}`}
+                  className="flex items-center gap-2 rounded-xl border border-border p-3 text-sm text-foreground hover:border-primary/40 hover:bg-muted/50">
+                  <BookOpen className="size-4 shrink-0 text-primary" />
+                  <span className="truncate font-medium">{r.title}</span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
 
         {addingCard && (
           <div className="mb-3">

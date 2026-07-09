@@ -79,10 +79,26 @@ create table if not exists public.review_logs (
   created_at        timestamptz not null default now()
 );
 
+-- ---------------------------------------------------------------------------
+-- Readings: AI-generated short stories that use a deck's vocabulary in
+-- context. content jsonb shape: { sentences: [{ es, en, targets: [{ surface,
+-- gloss }] }] } — see /api/decks/[deckId]/readings.
+-- ---------------------------------------------------------------------------
+create table if not exists public.readings (
+  id          uuid primary key default gen_random_uuid(),
+  deck_id     uuid not null references public.decks (id) on delete cascade,
+  user_id     uuid not null references auth.users (id) on delete cascade,
+  title       text not null,
+  scenario    text,
+  content     jsonb not null,
+  created_at  timestamptz not null default now()
+);
+
 -- Indexes for the hot queries: cards in a deck, and "due now" per user.
 create index if not exists cards_deck_id_idx     on public.cards (deck_id);
 create index if not exists cards_user_due_idx     on public.cards (user_id, due);
 create index if not exists review_logs_card_idx   on public.review_logs (card_id);
+create index if not exists readings_deck_idx      on public.readings (deck_id);
 
 -- ---------------------------------------------------------------------------
 -- Row-Level Security: every user can only touch their own rows.
@@ -90,10 +106,12 @@ create index if not exists review_logs_card_idx   on public.review_logs (card_id
 alter table public.decks       enable row level security;
 alter table public.cards       enable row level security;
 alter table public.review_logs enable row level security;
+alter table public.readings    enable row level security;
 
 drop policy if exists "own decks"        on public.decks;
 drop policy if exists "own cards"        on public.cards;
 drop policy if exists "own review_logs"  on public.review_logs;
+drop policy if exists "own readings"     on public.readings;
 
 create policy "own decks" on public.decks
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
@@ -102,4 +120,7 @@ create policy "own cards" on public.cards
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 create policy "own review_logs" on public.review_logs
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+create policy "own readings" on public.readings
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);

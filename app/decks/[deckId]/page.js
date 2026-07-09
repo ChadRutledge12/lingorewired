@@ -15,14 +15,21 @@ export default async function DeckDetailPage({ params }) {
   const { data: deck } = await supabase.from('decks').select('id, name').eq('id', deckId).single()
   if (!deck) notFound()
 
-  const { data: cards } = await supabase
-    .from('cards')
-    .select('id, word, translation, part_of_speech, example, example_translation, tier, due, state, stability, related_words')
-    .eq('deck_id', deckId)
-    .order('created_at', { ascending: true })
+  const [{ data: cards }, { data: readings }] = await Promise.all([
+    supabase
+      .from('cards')
+      .select('id, word, translation, part_of_speech, example, example_translation, tier, due, state, stability, related_words')
+      .eq('deck_id', deckId)
+      .order('created_at', { ascending: true }),
+    supabase
+      .from('readings')
+      .select('id, title, created_at')
+      .eq('deck_id', deckId)
+      .order('created_at', { ascending: false }),
+  ])
 
   const nowIso = new Date().toISOString()
   const dueCount = (cards || []).filter((c) => c.due <= nowIso).length
 
-  return <DeckDetailClient deck={deck} initialCards={cards || []} dueCount={dueCount} />
+  return <DeckDetailClient deck={deck} initialCards={cards || []} dueCount={dueCount} initialReadings={readings || []} />
 }
