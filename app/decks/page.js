@@ -6,6 +6,7 @@ import { humanInterval } from '@/lib/fsrs'
 import { computeStats } from '@/lib/stats'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { LogoLink } from '@/components/Logo'
 import DeleteDeckButton from './DeleteDeckButton'
 import NewEmptyDeckButton from './NewEmptyDeckButton'
 
@@ -61,6 +62,7 @@ export default async function DecksPage() {
   return (
     <div className="min-h-screen bg-muted/40 p-4 sm:p-6">
       <div className="mx-auto w-full max-w-2xl">
+        <LogoLink className="mb-5" />
         <div className="mb-6 flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-semibold text-foreground">My decks</h1>
@@ -68,7 +70,7 @@ export default async function DecksPage() {
           </div>
           <div className="flex items-center gap-2">
             <Button asChild variant="outline" className="rounded-xl">
-              <Link href="/"><Plus className="size-4" /> New set</Link>
+              <Link href="/?new=1"><Plus className="size-4" /> New set</Link>
             </Button>
             <NewEmptyDeckButton />
             <form action="/auth/signout" method="post">

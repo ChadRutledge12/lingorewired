@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { previewIntervals, humanInterval } from '@/lib/fsrs'
 import { Button } from '@/components/ui/button'
+import { LogoLink } from '@/components/Logo'
 import ReviewClient from './[deckId]/ReviewClient'
 
 export const dynamic = 'force-dynamic'
@@ -46,17 +47,20 @@ export default async function AllReviewPage() {
       .maybeSingle()
 
     return (
-      <div className="min-h-screen flex items-center justify-center bg-muted/40 p-4 sm:p-6">
-        <div className="bg-card text-card-foreground rounded-2xl shadow-sm ring-1 ring-foreground/10 p-8 w-full max-w-md text-center">
-          <div className="text-4xl mb-2">✅</div>
-          <h1 className="text-lg font-semibold text-foreground mb-1">All caught up</h1>
-          <p className="text-sm text-muted-foreground mb-6">
-            Nothing is due across any of your decks right now.
-            {nextCard && <> Next review in {humanInterval(now, nextCard.due)}.</>}
-          </p>
-          <Button asChild className="rounded-xl">
-            <Link href="/decks">Back to decks</Link>
-          </Button>
+      <div className="min-h-screen flex flex-col bg-muted/40 p-4 sm:p-6">
+        <LogoLink className="mb-4" />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="bg-card text-card-foreground rounded-2xl shadow-sm ring-1 ring-foreground/10 p-8 w-full max-w-md text-center">
+            <div className="text-4xl mb-2">✅</div>
+            <h1 className="text-lg font-semibold text-foreground mb-1">All caught up</h1>
+            <p className="text-sm text-muted-foreground mb-6">
+              Nothing is due across any of your decks right now.
+              {nextCard && <> Next review in {humanInterval(now, nextCard.due)}.</>}
+            </p>
+            <Button asChild className="rounded-xl">
+              <Link href="/decks">Back to decks</Link>
+            </Button>
+          </div>
         </div>
       </div>
     )

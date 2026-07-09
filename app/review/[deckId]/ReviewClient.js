@@ -17,6 +17,7 @@ import { useReviewMode } from '@/lib/useReviewMode'
 import { speak } from '@/lib/speech'
 import { buildCloze } from '@/lib/clozeBlank'
 import { masteryOf } from '@/lib/mastery'
+import { LogoLink } from '@/components/Logo'
 
 const TIER_CLASSES = {
   universal: 'bg-emerald-50 text-emerald-700 border-emerald-200',
@@ -165,8 +166,10 @@ export default function ReviewClient({ deckId, deckName, initialCards }) {
   }, [mode, current, checked])
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted/40 p-4 sm:p-6">
-      <div className="bg-card text-card-foreground rounded-2xl shadow-sm ring-1 ring-foreground/10 p-6 sm:p-8 w-full max-w-md">
+    <div className="min-h-screen flex flex-col bg-muted/40 p-4 sm:p-6">
+      <LogoLink className="mb-4" />
+      <div className="flex-1 flex items-center justify-center">
+        <div className="bg-card text-card-foreground rounded-2xl shadow-sm ring-1 ring-foreground/10 p-6 sm:p-8 w-full max-w-md">
         <div className="mb-4 flex items-center justify-between gap-2">
           <h1 className="text-lg font-semibold text-foreground truncate">{deckName}</h1>
           <div className="flex items-center gap-1 shrink-0">
@@ -325,6 +328,7 @@ export default function ReviewClient({ deckId, deckName, initialCards }) {
             </p>
           </>
         )}
+        </div>
       </div>
     </div>
   )

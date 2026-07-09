@@ -1,3 +1,5 @@
+import Link from 'next/link'
+
 // Brand mark: a glowing brain drawn as a neural network, with Spanish
 // characters (¡ ¿ ñ á) lighting up four of the neurons — language wired into
 // memory. A soft brain silhouette (bumpy gyri on top, cerebellum + stem
@@ -115,5 +117,18 @@ export default function Logo({ className = '' }) {
         Lingo<span style={{ color: RED }}>Rewired</span>
       </span>
     </div>
+  )
+}
+
+// Clickable logo that navigates home — the persistent top-left brand/home
+// button on every interior page.
+export function LogoLink({ className = '' }) {
+  return (
+    <Link
+      href="/"
+      aria-label="LingoRewired home"
+      className={`inline-flex w-fit rounded-xl transition-opacity hover:opacity-80 ${className}`}>
+      <Logo />
+    </Link>
   )
 }

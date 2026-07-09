@@ -124,10 +124,15 @@ const EMPTY_ANSWERS = {
   location: ''
 }
 
-export default function Home({ user, lastProfile }) {
+export default function Home({ user, lastProfile, startNew = false }) {
   const router = useRouter()
-  const [step, setStep] = useState(0)
-  const [answers, setAnswers] = useState(EMPTY_ANSWERS)
+  // `startNew` (from the dashboard's "New set") jumps straight to the
+  // prefilled preferences summary (step 7) when there's a profile to carry
+  // over, or the first question otherwise — skipping the welcome screen.
+  const [step, setStep] = useState(startNew ? (lastProfile ? 7 : 1) : 0)
+  const [answers, setAnswers] = useState(
+    startNew && lastProfile ? { ...EMPTY_ANSWERS, ...lastProfile } : EMPTY_ANSWERS
+  )
   // True while editing one field from the summary — Continue/Back then
   // return straight to the summary instead of marching through every step.
   const [editReturn, setEditReturn] = useState(false)

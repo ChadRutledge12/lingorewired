@@ -6,6 +6,7 @@ import { masteryOf, MASTERY_LEVELS } from '@/lib/mastery'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import SpeakButton from '@/components/SpeakButton'
+import { LogoLink } from '@/components/Logo'
 import { useVoiceGender } from '@/lib/useVoiceGender'
 
 // Font sizes per mastery level: mastered words dominate the cloud, new words
@@ -93,6 +94,7 @@ export default function CloudClient({ cards, deckNames }) {
   return (
     <div className="min-h-screen bg-muted/40 p-4 sm:p-6">
       <div className="mx-auto w-full max-w-3xl">
+        <LogoLink className="mb-4" />
         <Link href="/decks" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4">
           <ArrowLeft className="size-3.5" /> Back to decks
         </Link>

@@ -4,7 +4,8 @@ import HomeClient from './HomeClient'
 // Depends on the auth cookie, so this can't be statically generated.
 export const dynamic = 'force-dynamic'
 
-export default async function Page() {
+export default async function Page({ searchParams }) {
+  const { new: newParam } = await searchParams
   const supabase = await createClient()
   const {
     data: { user },
@@ -24,5 +25,7 @@ export default async function Page() {
     lastProfile = data?.profile || null
   }
 
-  return <HomeClient user={user} lastProfile={lastProfile} />
+  // `?new=1` (from the dashboard's "New set") skips the welcome screen and
+  // drops a logged-in learner straight into the prefilled preferences.
+  return <HomeClient user={user} lastProfile={lastProfile} startNew={!!user && newParam === '1'} />
 }

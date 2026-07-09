@@ -6,6 +6,7 @@ import { exportDeckPdf } from '@/lib/exportPdf'
 import { masteryOf } from '@/lib/mastery'
 import WordCloud from '@/components/WordCloud'
 import SuggestionsList from '@/components/SuggestionsList'
+import { LogoLink } from '@/components/Logo'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -374,6 +375,7 @@ export default function DeckDetailClient({ deck, initialCards, dueCount }) {
   return (
     <div className="min-h-screen bg-muted/40 p-4 sm:p-6">
       <div className="mx-auto w-full max-w-2xl">
+        <LogoLink className="mb-4" />
         <Link href="/decks" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4">
           <ArrowLeft className="size-3.5" /> Back to decks
         </Link>
