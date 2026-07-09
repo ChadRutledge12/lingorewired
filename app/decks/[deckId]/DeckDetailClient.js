@@ -21,7 +21,7 @@ const TIER_CLASSES = {
   domain: 'bg-amber-50 text-amber-700 border-amber-200',
 }
 
-const POS_OPTIONS = ['noun', 'verb', 'adjective', 'adverb', 'phrase', 'other']
+const POS_OPTIONS = ['noun', 'verb', 'adjective', 'adverb', 'pronoun', 'preposition', 'conjunction', 'article', 'interjection', 'numeral', 'phrase', 'other']
 
 const EMPTY_DRAFT = { word: '', translation: '', part_of_speech: '', example: '', example_translation: '' }
 

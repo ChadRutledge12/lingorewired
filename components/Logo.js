@@ -1,63 +1,77 @@
-// Brand mark: a glowing neural network in the shape of a brain, with Spanish
+// Brand mark: a glowing brain drawn as a neural network, with Spanish
 // characters (¡ ¿ ñ á) lighting up four of the neurons — language wired into
-// memory. Neon-on-dark in the Spanish flag palette (red / gold / white), so
-// the mark carries its own dark badge and reads the same on light or dark
-// app backgrounds. Pure inline SVG.
+// memory. A soft brain silhouette (bumpy gyri on top, cerebellum + stem
+// notch at the lower left) holds the network so it reads as a brain, not
+// just a graph. Neon-on-dark in the Spanish flag palette (red / gold /
+// white), self-contained dark badge so it looks the same on any background.
 
 const RED = '#E8382F'
 const GOLD = '#F6C31C'
 const WHITE = '#F4F1EA'
 
-// One shared network definition, rendered twice: once blurred (the neon glow)
-// and once crisp on top. Edges + nodes + glyphs all live here so the whole
-// thing glows together.
+// Left-facing brain silhouette: frontal lobe at left, gyri bumps across the
+// top, occipital curve at right, cerebellum + brain-stem notch bottom-left.
+const BRAIN_OUTLINE =
+  'M17 38 C11 36 9 28 14 24 C12 19 17 15 23 17 C25 12 31 12 33 16 ' +
+  'C36 12 42 12 44 17 C50 15 55 20 52 26 C56 30 53 36 48 36 ' +
+  'C50 41 45 45 40 43 C38 47 32 47 30 43 C28 46 22 46 22 41 ' +
+  'C19 43 16 42 17 38 Z'
+// Central fissure — the crease down the middle of a brain.
+const BRAIN_SULCUS = 'M33 16 C30 22 34 26 31 31 C28 35 33 39 30 43'
+
+// One shared definition, rendered twice: blurred (neon glow) then crisp.
 function Network() {
   return (
     <>
+      {/* Brain silhouette + central fissure */}
+      <path d={BRAIN_OUTLINE} fill="none" stroke={GOLD} strokeWidth="1.3" opacity="0.55" strokeLinejoin="round" />
+      <path d={BRAIN_SULCUS} fill="none" stroke={WHITE} strokeWidth="1" opacity="0.3" strokeLinecap="round" />
+
       {/* Synapse edges */}
       <g fill="none" strokeWidth="1" strokeLinecap="round">
         <g stroke={RED} opacity="0.7">
-          <path d="M26 16 L16 24" /><path d="M16 24 L13 33" /><path d="M13 33 L20 45" />
-          <path d="M16 24 L24 30" /><path d="M13 33 L24 30" /><path d="M20 45 L30 40" />
-          <path d="M24 30 L34 25" />
+          <path d="M15 27 L22 18" /><path d="M15 27 L25 29" /><path d="M22 18 L25 29" />
+          <path d="M17 37 L22 41" /><path d="M15 27 L17 37" /><path d="M22 41 L31 38" />
         </g>
         <g stroke={GOLD} opacity="0.7">
-          <path d="M26 16 L37 16" /><path d="M37 16 L34 25" /><path d="M34 25 L42 32" />
-          <path d="M30 40 L31 49" /><path d="M42 32 L51 33" /><path d="M30 40 L42 32" />
-          <path d="M20 45 L31 49" />
+          <path d="M22 18 L32 15" /><path d="M32 15 L35 25" /><path d="M25 29 L35 25" />
+          <path d="M31 38 L31 44" /><path d="M35 25 L43 32" /><path d="M31 38 L25 29" />
+          <path d="M22 41 L31 44" /><path d="M32 15 L43 18" />
         </g>
         <g stroke={WHITE} opacity="0.6">
-          <path d="M37 16 L48 22" /><path d="M48 22 L51 33" /><path d="M42 32 L43 45" />
-          <path d="M51 33 L43 45" /><path d="M43 45 L31 49" /><path d="M24 30 L42 32" />
+          <path d="M43 18 L51 26" /><path d="M51 26 L48 35" /><path d="M43 32 L51 26" />
+          <path d="M43 32 L48 35" /><path d="M48 35 L40 43" /><path d="M40 43 L31 44" />
+          <path d="M35 25 L43 18" />
         </g>
       </g>
 
-      {/* Plain neurons */}
+      {/* Plain neurons, following the brain contour */}
       <g>
-        <circle cx="16" cy="24" r="2" fill={GOLD} />
-        <circle cx="13" cy="33" r="2" fill={RED} />
-        <circle cx="20" cy="45" r="2" fill={RED} />
-        <circle cx="31" cy="49" r="2" fill={GOLD} />
-        <circle cx="43" cy="45" r="2" fill={WHITE} />
-        <circle cx="51" cy="33" r="2.2" fill={GOLD} />
-        <circle cx="48" cy="22" r="2" fill={WHITE} />
-        <circle cx="37" cy="16" r="2" fill={GOLD} />
-        <circle cx="26" cy="16" r="2" fill={RED} />
+        <circle cx="15" cy="27" r="2" fill={GOLD} />
+        <circle cx="22" cy="18" r="2" fill={RED} />
+        <circle cx="32" cy="15" r="2" fill={GOLD} />
+        <circle cx="43" cy="18" r="2" fill={GOLD} />
+        <circle cx="51" cy="26" r="2.2" fill={GOLD} />
+        <circle cx="48" cy="35" r="2" fill={WHITE} />
+        <circle cx="40" cy="43" r="2" fill={WHITE} />
+        <circle cx="31" cy="44" r="2" fill={GOLD} />
+        <circle cx="22" cy="41" r="2" fill={RED} />
+        <circle cx="17" cy="37" r="2" fill={RED} />
       </g>
 
-      {/* Glyph neurons — the Spanish characters */}
+      {/* Glyph neurons — the Spanish characters, in the core of the brain */}
       <g fontFamily="Georgia, 'Times New Roman', serif" fontWeight="700" textAnchor="middle" dominantBaseline="central">
-        <circle cx="24" cy="30" r="4.6" fill={RED} />
-        <text x="24" y="30.4" fontSize="6.2" fill={WHITE}>¡</text>
+        <circle cx="25" cy="29" r="4.6" fill={RED} />
+        <text x="25" y="29.4" fontSize="6.2" fill={WHITE}>¡</text>
 
-        <circle cx="34" cy="25" r="4.8" fill={GOLD} />
-        <text x="34" y="25.4" fontSize="6.4" fill="#1a1408">¿</text>
+        <circle cx="35" cy="25" r="4.8" fill={GOLD} />
+        <text x="35" y="25.4" fontSize="6.4" fill="#1a1408">¿</text>
 
-        <circle cx="42" cy="32" r="4.8" fill={WHITE} />
-        <text x="42" y="32.4" fontSize="6.4" fill="#1a1408">ñ</text>
+        <circle cx="43" cy="32" r="4.8" fill={WHITE} />
+        <text x="43" y="32.4" fontSize="6.4" fill="#1a1408">ñ</text>
 
-        <circle cx="30" cy="40" r="4.6" fill={GOLD} />
-        <text x="30" y="40.4" fontSize="6.2" fill="#1a1408">á</text>
+        <circle cx="31" cy="38" r="4.6" fill={GOLD} />
+        <text x="31" y="38.4" fontSize="6.2" fill="#1a1408">á</text>
       </g>
     </>
   )
