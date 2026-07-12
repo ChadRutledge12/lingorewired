@@ -27,6 +27,17 @@ const POS_OPTIONS = ['noun', 'verb', 'adjective', 'adverb', 'pronoun', 'preposit
 
 const EMPTY_DRAFT = { word: '', translation: '', part_of_speech: '', example: '', example_translation: '' }
 
+// A few reading scenarios drawn from the deck's onboarding profile, so the
+// suggestions feel personal instead of generic. Falls back to broadly useful
+// prompts when there's no profile.
+function scenarioSuggestions(profile) {
+  const out = []
+  for (const c of (profile?.contexts || []).slice(0, 2)) out.push(`A day at ${c.toLowerCase()}`)
+  for (const i of (profile?.interests || []).slice(0, 2)) out.push(`A story about ${i.toLowerCase()}`)
+  if (out.length === 0) return ['A conversation with a friend', 'A small everyday mishap', 'A trip to the market']
+  return out.slice(0, 4)
+}
+
 function DeckName({ deck }) {
   const [savedName, setSavedName] = useState(deck.name)
   const [renaming, setRenaming] = useState(false)
@@ -465,6 +476,17 @@ export default function DeckDetailClient({ deck, initialCards, dueCount, initial
               rows={2}
               className="w-full rounded-lg border border-border bg-transparent px-3 py-2 text-sm outline-none focus:border-primary"
             />
+            <div className="flex flex-wrap gap-1.5">
+              {scenarioSuggestions(deck.profile).map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => setReadingScenario(s)}
+                  className="rounded-full border border-border px-2.5 py-1 text-xs text-muted-foreground hover:border-primary/40 hover:text-foreground">
+                  {s}
+                </button>
+              ))}
+            </div>
             <div className="flex flex-wrap items-center gap-2">
               <Select value={readingLength} onValueChange={setReadingLength}>
                 <SelectTrigger size="sm" className="w-32 rounded-lg"><SelectValue /></SelectTrigger>

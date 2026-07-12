@@ -12,7 +12,7 @@ export default async function DeckDetailPage({ params }) {
   } = await supabase.auth.getUser()
   if (!user) redirect(`/login?next=/decks/${deckId}`)
 
-  const { data: deck } = await supabase.from('decks').select('id, name').eq('id', deckId).single()
+  const { data: deck } = await supabase.from('decks').select('id, name, profile').eq('id', deckId).single()
   if (!deck) notFound()
 
   const [{ data: cards }, { data: readings }] = await Promise.all([
