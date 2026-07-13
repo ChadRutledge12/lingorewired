@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Pencil, Trash2, Check, X, Loader2, Download, Sparkles, Share2, Lightbulb, Plus, BookOpen } from 'lucide-react'
+import { ArrowLeft, Pencil, Trash2, Check, X, Loader2, Download, Sparkles, Share2, Lightbulb, Plus, BookOpen, Languages } from 'lucide-react'
 import { exportDeckPdf } from '@/lib/exportPdf'
 import { masteryOf } from '@/lib/mastery'
 import { tierInfo } from '@/lib/tier'
@@ -446,6 +446,14 @@ export default function DeckDetailClient({ deck, initialCards, dueCount, initial
             disabled={cards.length === 0}
             className="rounded-xl">
             <BookOpen className="size-3.5" /> Create a reading
+          </Button>
+          <Button
+            asChild
+            variant="outline"
+            size="sm"
+            disabled={cards.length === 0}
+            className="rounded-xl">
+            <Link href={`/translate/${deck.id}`}><Languages className="size-3.5" /> Translate practice</Link>
           </Button>
           <Button
             variant="outline"

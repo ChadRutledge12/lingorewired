@@ -53,7 +53,9 @@ function ChipGroup({ type, options, value, onChange }) {
 }
 
 function CustomChipInput({ options, values, otherValue, onOtherChange, onAdd, onRemove }) {
-  const custom = values.filter(v => !options.includes(v))
+  // Dedupe defensively so a legacy profile with repeated custom entries
+  // renders each chip once (and avoids duplicate React keys).
+  const custom = [...new Set(values.filter(v => !options.includes(v)))]
   return (
     <>
       {custom.length > 0 && (
@@ -171,7 +173,13 @@ export default function Home({ user, lastProfile, startNew = false }) {
   // preloaded and they land on the summary, where any field can be edited.
   const startNewSet = () => {
     if (lastProfile) {
-      setAnswers({ ...EMPTY_ANSWERS, ...lastProfile })
+      // Dedupe the carried-over multi-select answers — older profiles can
+      // hold duplicate custom entries from before the add paths deduped.
+      const cleaned = { ...EMPTY_ANSWERS, ...lastProfile }
+      for (const key of ['goals', 'interests', 'contexts']) {
+        if (Array.isArray(cleaned[key])) cleaned[key] = [...new Set(cleaned[key])]
+      }
+      setAnswers(cleaned)
       setStep(7)
     } else {
       setStep(1)
@@ -254,7 +262,9 @@ export default function Home({ user, lastProfile, startNew = false }) {
   }
 
   const addTopic = (topic) => {
-    const updated = { ...answers, interests: [...answers.interests, topic] }
+    // Don't re-add a topic the learner already has as an interest.
+    const interests = answers.interests.includes(topic) ? answers.interests : [...answers.interests, topic]
+    const updated = { ...answers, interests }
     setAnswers(updated)
     generateWords(updated)
   }
