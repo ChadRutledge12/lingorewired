@@ -297,6 +297,92 @@ export default function DeckDetailClient({ deck, initialCards, dueCount, initial
   const [readingLength, setReadingLength] = useState('short')
   const [creatingReading, setCreatingReading] = useState(false)
   const [readingError, setReadingError] = useState('')
+  // Empty-deck "Fill this deck" panel (title-seeded suggestions). Auto-shows
+  // only for decks that start empty; stays open through the first adds.
+  const [fillOpen, setFillOpen] = useState(initialCards.length === 0)
+  const [fillTab, setFillTab] = useState('words')
+  const [fillWords, setFillWords] = useState([])
+  const [fillTopics, setFillTopics] = useState([])
+  const [fillLoading, setFillLoading] = useState(false)
+  const [fillError, setFillError] = useState('')
+  const [addingAll, setAddingAll] = useState(false)
+
+  const suggestWords = async (topic) => {
+    setFillLoading(true)
+    setFillError('')
+    try {
+      const res = await fetch(`/api/decks/${deck.id}/suggest-words`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(topic ? { topic } : {}),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to suggest words')
+      setFillWords(data.words || [])
+    } catch (err) {
+      setFillError(err.message || 'Failed to suggest words')
+    } finally {
+      setFillLoading(false)
+    }
+  }
+
+  const suggestFillTopics = async () => {
+    setFillLoading(true)
+    setFillError('')
+    try {
+      const res = await fetch(`/api/decks/${deck.id}/suggest-topics`, { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to suggest topics')
+      setFillTopics(data.suggestions || [])
+    } catch (err) {
+      setFillError(err.message || 'Failed to suggest topics')
+    } finally {
+      setFillLoading(false)
+    }
+  }
+
+  const pickFillTopic = (topic) => {
+    setFillTab('words')
+    setFillWords([])
+    suggestWords(topic)
+  }
+
+  const addSuggestedWord = async (word) => {
+    try {
+      const res = await fetch(`/api/decks/${deck.id}/cards`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(word),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to add')
+      setCards((prev) => [...prev, data.card])
+      setFillWords((prev) => prev.filter((w) => w.word !== word.word))
+    } catch (err) {
+      setFillError(err.message || 'Failed to add word')
+    }
+  }
+
+  const addAllSuggestedWords = async () => {
+    setAddingAll(true)
+    setFillError('')
+    try {
+      const res = await fetch(`/api/decks/${deck.id}/cards`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ words: fillWords }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to add words')
+      setCards((prev) => [...prev, ...data.cards])
+      setFillWords([])
+      setFillOpen(false)
+    } catch (err) {
+      setFillError(err.message || 'Failed to add words')
+    } finally {
+      setAddingAll(false)
+    }
+  }
 
   const createReading = async () => {
     setCreatingReading(true)
@@ -422,15 +508,19 @@ export default function DeckDetailClient({ deck, initialCards, dueCount, initial
         </div>
 
         <div className={`flex flex-wrap gap-2 ${amplifyError ? 'mb-1' : 'mb-6'}`}>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={amplifyDeck}
-            disabled={amplifying}
-            className="rounded-xl">
-            {amplifying ? <Loader2 className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />}
-            {amplifying ? 'Adding related words...' : 'Amplify deck'}
-          </Button>
+          {/* Amplify extends an existing set, so it's meaningless until there's
+              at least one card. */}
+          {cards.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={amplifyDeck}
+              disabled={amplifying}
+              className="rounded-xl">
+              {amplifying ? <Loader2 className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />}
+              {amplifying ? 'Adding related words...' : 'Amplify deck'}
+            </Button>
+          )}
           <Button
             variant="outline"
             size="sm"
@@ -537,10 +627,88 @@ export default function DeckDetailClient({ deck, initialCards, dueCount, initial
           </div>
         )}
 
+        {/* Title-seeded suggestions to fill an empty deck. Rendered
+            independently of the empty state so it survives adding the first
+            word — you can keep adding the rest of the suggestions. */}
+        {fillOpen && (
+          <div className="mb-4 rounded-2xl border border-primary/30 p-4">
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <p className="text-sm font-medium text-foreground">Fill this deck from &ldquo;{deck.name}&rdquo;</p>
+              <Button size="icon-sm" variant="ghost" onClick={() => setFillOpen(false)} aria-label="Close" className="text-muted-foreground">
+                <X className="size-4" />
+              </Button>
+            </div>
+
+            <div className="mb-3 inline-flex rounded-lg bg-muted p-0.5 text-sm">
+              {['words', 'topics'].map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setFillTab(t)}
+                  className={`rounded-md px-3 py-1 capitalize ${fillTab === t ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'}`}>
+                  {t === 'words' ? 'Suggested words' : 'Suggested topics'}
+                </button>
+              ))}
+            </div>
+
+            {fillTab === 'words' ? (
+              fillWords.length === 0 ? (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-2">Generate a starter set of words for this deck.</p>
+                  <Button size="sm" onClick={() => suggestWords()} disabled={fillLoading} className="rounded-lg">
+                    {fillLoading ? <Loader2 className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />}
+                    {fillLoading ? 'Thinking of words...' : 'Suggest words'}
+                  </Button>
+                </div>
+              ) : (
+                <div>
+                  <div className="mb-3 flex items-center justify-between gap-2">
+                    <p className="text-xs text-muted-foreground">Tap a word to add it, or add them all.</p>
+                    <Button size="sm" onClick={addAllSuggestedWords} disabled={addingAll} className="rounded-lg">
+                      {addingAll ? <Loader2 className="size-3.5 animate-spin" /> : <Plus className="size-3.5" />}
+                      Add all {fillWords.length}
+                    </Button>
+                  </div>
+                  <div className="space-y-2">
+                    {fillWords.map((w) => (
+                      <button
+                        key={w.word}
+                        type="button"
+                        onClick={() => addSuggestedWord(w)}
+                        className="flex w-full items-center gap-2 rounded-xl border border-border p-3 text-left hover:border-primary/40 hover:bg-muted/50">
+                        <Plus className="size-4 shrink-0 text-primary" />
+                        <span className="min-w-0">
+                          <span className="font-medium text-foreground">{w.word}</span>
+                          <span className="text-muted-foreground"> — {w.translation}</span>
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )
+            ) : fillTopics.length === 0 ? (
+              <div>
+                <p className="text-xs text-muted-foreground mb-2">Pick a focus within this deck&apos;s theme.</p>
+                <Button size="sm" onClick={suggestFillTopics} disabled={fillLoading} className="rounded-lg">
+                  {fillLoading ? <Loader2 className="size-3.5 animate-spin" /> : <Lightbulb className="size-3.5" />}
+                  {fillLoading ? 'Thinking of topics...' : 'Suggest topics'}
+                </Button>
+              </div>
+            ) : (
+              <div>
+                <p className="text-xs text-muted-foreground mb-2">Tap a topic to get words focused on it.</p>
+                <SuggestionsList suggestions={fillTopics} onSelect={pickFillTopic} />
+              </div>
+            )}
+
+            {fillError && <p className="mt-2 text-sm text-red-500">{fillError}</p>}
+          </div>
+        )}
+
         {cards.length === 0 && !addingCard ? (
           <div className="rounded-2xl bg-card ring-1 ring-foreground/10 p-8 text-center">
             <p className="text-foreground font-medium mb-1">This deck is empty</p>
-            <p className="text-sm text-muted-foreground mb-4">Add your own vocabulary — from a textbook, class, or anywhere else.</p>
+            <p className="text-sm text-muted-foreground mb-4">Add your own vocabulary, or start from AI suggestions based on the title.</p>
             <Button onClick={() => setAddingCard(true)} className="rounded-xl">
               <Plus className="size-4" /> Add your first card
             </Button>

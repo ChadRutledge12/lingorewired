@@ -3,6 +3,7 @@ import {
   callClaudeForWords,
   buildTopicSuggestionsPrompt,
   buildWordsOnlyTopicSuggestionsPrompt,
+  buildTitleTopicSuggestionsPrompt,
   dedupeSuggestions,
 } from '@/lib/wordGeneration'
 
@@ -21,7 +22,7 @@ export async function POST(request, { params }) {
     return Response.json({ error: 'Not authenticated' }, { status: 401 })
   }
 
-  const { data: deck } = await supabase.from('decks').select('id, profile').eq('id', deckId).single()
+  const { data: deck } = await supabase.from('decks').select('id, name, profile').eq('id', deckId).single()
   if (!deck) {
     return Response.json({ error: 'Deck not found' }, { status: 404 })
   }
@@ -29,9 +30,13 @@ export async function POST(request, { params }) {
   const { data: cards } = await supabase.from('cards').select('word').eq('deck_id', deckId)
   const currentWords = (cards || []).map((c) => c.word).join(', ')
 
-  const prompt = deck.profile
-    ? buildTopicSuggestionsPrompt(deck.profile, currentWords)
-    : buildWordsOnlyTopicSuggestionsPrompt(currentWords)
+  // Empty deck: there are no words to extend from, so seed suggestions off the
+  // deck's title instead. Otherwise suggest what naturally follows the set.
+  const prompt = currentWords
+    ? deck.profile
+      ? buildTopicSuggestionsPrompt(deck.profile, currentWords)
+      : buildWordsOnlyTopicSuggestionsPrompt(currentWords)
+    : buildTitleTopicSuggestionsPrompt(deck.name, deck.profile)
 
   try {
     const suggestions = dedupeSuggestions(await callClaudeForWords(prompt, 500), currentWords)
