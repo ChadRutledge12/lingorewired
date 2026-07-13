@@ -9,6 +9,7 @@ import { tierInfo } from '@/lib/tier'
 import WordCloud from '@/components/WordCloud'
 import SuggestionsList from '@/components/SuggestionsList'
 import { LogoLink } from '@/components/Logo'
+import GenerationProgress from '@/components/GenerationProgress'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -555,6 +556,7 @@ export default function DeckDetailClient({ deck, initialCards, dueCount, initial
           </Button>
         </div>
         {amplifyError && <p className="text-sm text-red-500 mb-6">{amplifyError}</p>}
+        {amplifying && <div className="mb-6"><GenerationProgress message="Adding related words…" /></div>}
 
         {readingPanelOpen && (
           <div className="mb-6 rounded-2xl border border-primary/30 p-4 space-y-3">
@@ -652,12 +654,13 @@ export default function DeckDetailClient({ deck, initialCards, dueCount, initial
             </div>
 
             {fillTab === 'words' ? (
-              fillWords.length === 0 ? (
+              fillLoading ? (
+                <GenerationProgress message="Finding words for this deck…" />
+              ) : fillWords.length === 0 ? (
                 <div>
                   <p className="text-xs text-muted-foreground mb-2">Generate a starter set of words for this deck.</p>
-                  <Button size="sm" onClick={() => suggestWords()} disabled={fillLoading} className="rounded-lg">
-                    {fillLoading ? <Loader2 className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />}
-                    {fillLoading ? 'Thinking of words...' : 'Suggest words'}
+                  <Button size="sm" onClick={() => suggestWords()} className="rounded-lg">
+                    <Sparkles className="size-3.5" /> Suggest words
                   </Button>
                 </div>
               ) : (
@@ -728,9 +731,9 @@ export default function DeckDetailClient({ deck, initialCards, dueCount, initial
                 <p className="text-xs text-muted-foreground uppercase tracking-widest mb-3">Suggested next topics</p>
                 <SuggestionsList suggestions={suggestions} onSelect={addSuggestedTopic} />
                 {addingTopic && (
-                  <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <Loader2 className="size-3 animate-spin" /> Adding words for &ldquo;{addingTopic}&rdquo;...
-                  </p>
+                  <div className="mt-3">
+                    <GenerationProgress message={`Adding words for “${addingTopic}”…`} />
+                  </div>
                 )}
               </>
             ) : (

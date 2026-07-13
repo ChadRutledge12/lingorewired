@@ -20,6 +20,7 @@ import VoicePicker from '@/components/VoicePicker'
 import VoiceDebugInfo from '@/components/VoiceDebugInfo'
 import SuggestionsList from '@/components/SuggestionsList'
 import Logo from '@/components/Logo'
+import GenerationProgress from '@/components/GenerationProgress'
 import { useVoiceGender } from '@/lib/useVoiceGender'
 
 const LEVEL_OPTIONS = ['Complete beginner', 'A1 — I know a little', 'A2 — Basic phrases', 'B1 — Conversational', 'B2+ — Comfortable']
@@ -538,10 +539,13 @@ export default function Home({ user, lastProfile, startNew = false }) {
               {loading ? 'Generating...' : 'Generate my words'}
             </Button>
             {loading && (
-              <div className="mt-6 space-y-3">
-                <Skeleton className="h-16 w-full rounded-xl" />
-                <Skeleton className="h-16 w-full rounded-xl" />
-                <Skeleton className="h-16 w-full rounded-xl" />
+              <div className="mt-6 space-y-4">
+                <GenerationProgress message="Building your vocabulary set…" />
+                <div className="space-y-3">
+                  <Skeleton className="h-16 w-full rounded-xl" />
+                  <Skeleton className="h-16 w-full rounded-xl" />
+                  <Skeleton className="h-16 w-full rounded-xl" />
+                </div>
               </div>
             )}
           </div>
@@ -570,6 +574,14 @@ export default function Home({ user, lastProfile, startNew = false }) {
                 <Download className="size-4" /> PDF
               </Button>
             </div>
+
+            {/* Generation feedback — covers "add 6 more" and picking a
+                suggested topic, both of which take ~10s. */}
+            {loading && (
+              <div className="mb-4">
+                <GenerationProgress message="Generating more words…" />
+              </div>
+            )}
 
             {/* Save to deck */}
             <div className="mb-4">
