@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { dedupeSuggestions } from '@/lib/wordGeneration'
 
 export async function POST(request) {
   const supabase = await createClient()
@@ -67,7 +68,7 @@ No explanation, no markdown, just the JSON array.`
   try {
     const text = data.content[0].text.trim()
     const clean = text.replace(/```json|```/g, '').trim()
-    const suggestions = JSON.parse(clean)
+    const suggestions = dedupeSuggestions(JSON.parse(clean), profile.currentWords)
     return Response.json({ suggestions })
   } catch (err) {
     return Response.json({ error: 'Failed to parse suggestions' }, { status: 502 })

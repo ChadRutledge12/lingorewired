@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { ArrowLeft, Pencil, Trash2, Check, X, Loader2, Download, Sparkles, Share2, Lightbulb, Plus, BookOpen } from 'lucide-react'
 import { exportDeckPdf } from '@/lib/exportPdf'
 import { masteryOf } from '@/lib/mastery'
+import { tierInfo } from '@/lib/tier'
 import WordCloud from '@/components/WordCloud'
 import SuggestionsList from '@/components/SuggestionsList'
 import { LogoLink } from '@/components/Logo'
@@ -16,12 +17,6 @@ import {
   AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader,
   AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction,
 } from '@/components/ui/alert-dialog'
-
-const TIER_CLASSES = {
-  universal: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  environment: 'bg-primary/10 text-primary border-primary/20',
-  domain: 'bg-amber-50 text-amber-700 border-amber-200',
-}
 
 const POS_OPTIONS = ['noun', 'verb', 'adjective', 'adverb', 'pronoun', 'preposition', 'conjunction', 'article', 'interjection', 'numeral', 'phrase', 'other']
 
@@ -247,7 +242,7 @@ function CardRow({ card, onSaved, onDeleted, onExplore }) {
             <span className={`size-1.5 rounded-full ${mastery.dotClass}`} />
             {mastery.label}
           </span>
-          {card.tier && <Badge variant="outline" className={TIER_CLASSES[card.tier] || ''}>{card.tier}</Badge>}
+          {card.tier && <Badge variant="outline" className={tierInfo(card.tier).badgeClass}>{tierInfo(card.tier).label}</Badge>}
           <Button size="icon-sm" variant="ghost" onClick={() => onExplore(card)} aria-label={`See words related to ${card.word}`} className="text-muted-foreground">
             <Share2 className="size-3.5" />
           </Button>

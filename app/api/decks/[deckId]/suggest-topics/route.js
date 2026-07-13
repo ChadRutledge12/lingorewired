@@ -3,6 +3,7 @@ import {
   callClaudeForWords,
   buildTopicSuggestionsPrompt,
   buildWordsOnlyTopicSuggestionsPrompt,
+  dedupeSuggestions,
 } from '@/lib/wordGeneration'
 
 // Suggests follow-up topics for an already-saved deck, based on its current
@@ -33,7 +34,7 @@ export async function POST(request, { params }) {
     : buildWordsOnlyTopicSuggestionsPrompt(currentWords)
 
   try {
-    const suggestions = await callClaudeForWords(prompt, 500)
+    const suggestions = dedupeSuggestions(await callClaudeForWords(prompt, 500), currentWords)
     return Response.json({ suggestions })
   } catch (err) {
     return Response.json({ error: err.message }, { status: err.status || 500 })

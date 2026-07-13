@@ -17,13 +17,8 @@ import { useReviewMode } from '@/lib/useReviewMode'
 import { speak } from '@/lib/speech'
 import { buildCloze } from '@/lib/clozeBlank'
 import { masteryOf } from '@/lib/mastery'
+import { tierInfo } from '@/lib/tier'
 import { LogoLink } from '@/components/Logo'
-
-const TIER_CLASSES = {
-  universal: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  environment: 'bg-primary/10 text-primary border-primary/20',
-  domain: 'bg-amber-50 text-amber-700 border-amber-200',
-}
 
 const RATING_BUTTONS = [
   { key: 'again', label: 'Again', classes: 'border-red-200 bg-red-50 text-red-600 hover:bg-red-100' },
@@ -215,8 +210,8 @@ export default function ReviewClient({ deckId, deckName, initialCards }) {
                       <span className="text-[11px] text-muted-foreground mb-2">{current.deckName}</span>
                     )}
                     {current.tier && (
-                      <Badge variant="outline" className={`mb-4 ${TIER_CLASSES[current.tier] || ''}`}>
-                        {current.tier}
+                      <Badge variant="outline" className={`mb-4 ${tierInfo(current.tier).badgeClass}`}>
+                        {tierInfo(current.tier).label}
                       </Badge>
                     )}
                     <div className="flex items-center gap-1 mb-2">
@@ -243,8 +238,8 @@ export default function ReviewClient({ deckId, deckName, initialCards }) {
                   <span className="text-[11px] text-muted-foreground mb-2">{current.deckName}</span>
                 )}
                 {current.tier && (
-                  <Badge variant="outline" className={`mx-auto mb-4 ${TIER_CLASSES[current.tier] || ''}`}>
-                    {current.tier}
+                  <Badge variant="outline" className={`mx-auto mb-4 ${tierInfo(current.tier).badgeClass}`}>
+                    {tierInfo(current.tier).label}
                   </Badge>
                 )}
 

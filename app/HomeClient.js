@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Loader2, X, PartyPopper, Save, Download, LogOut, Pencil, Plus } from 'lucide-react'
 import { exportDeckPdf } from '@/lib/exportPdf'
 import { normalizeWord } from '@/lib/normalizeWord'
+import { tierInfo } from '@/lib/tier'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
@@ -28,20 +29,6 @@ const INTEREST_OPTIONS = ['Sport & fitness', 'Food & cooking', 'Music', 'Busines
 const CONTEXT_OPTIONS = ['Restaurants & cafes', 'Meetings & offices', 'Outdoors & activities', 'Hotels & travel', 'Shops & markets', 'Social situations', 'Emergencies', 'Medical settings']
 const LOCATION_OPTIONS = ['Spain', 'Mexico', 'Argentina', 'Colombia', 'Latin America (general)', 'Not sure yet']
 
-const TIER_INFO = {
-  universal: {
-    classes: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-    description: 'Essential for every Spanish speaker — the foundation.'
-  },
-  environment: {
-    classes: 'bg-primary/10 text-primary border-primary/20',
-    description: "Words for the specific situations you'll be in."
-  },
-  domain: {
-    classes: 'bg-amber-50 text-amber-700 border-amber-200',
-    description: 'Vocabulary from your world — your profession and interests.'
-  }
-}
 
 const chipClasses = 'h-auto rounded-full border px-4 py-2 text-sm font-medium transition data-[state=off]:border-border data-[state=off]:bg-transparent data-[state=off]:text-muted-foreground data-[state=off]:hover:bg-muted data-[state=off]:hover:text-foreground data-[state=on]:border-primary data-[state=on]:bg-primary/10 data-[state=on]:text-primary'
 
@@ -102,15 +89,15 @@ function CustomChipInput({ options, values, otherValue, onOtherChange, onAdd, on
 }
 
 function TierBadge({ tier }) {
-  const info = TIER_INFO[tier]
+  const info = tierInfo(tier)
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <Badge variant="outline" className={`cursor-help ${info?.classes || ''}`}>
-          {tier}
+        <Badge variant="outline" className={`cursor-help ${info.badgeClass}`}>
+          {info.label}
         </Badge>
       </TooltipTrigger>
-      <TooltipContent>{info?.description}</TooltipContent>
+      <TooltipContent>{info.description}</TooltipContent>
     </Tooltip>
   )
 }
@@ -365,6 +352,9 @@ export default function Home({ user, lastProfile, startNew = false }) {
                 <p className="text-sm text-muted-foreground text-center">
                   Already have an account?{' '}
                   <Link href="/login?next=/" className="font-medium text-primary hover:underline">Log in</Link>
+                </p>
+                <p className="mt-4 border-t border-border pt-4 text-center text-sm text-muted-foreground">
+                  <Link href="/philosophy" className="hover:text-foreground">Why LingoRewired? →</Link>
                 </p>
               </>
             )}
@@ -659,8 +649,8 @@ export default function Home({ user, lastProfile, startNew = false }) {
                         onClick={() => setCardFlipped(f => !f)}
                         className={`flashcard relative w-full h-full cursor-pointer ${cardFlipped ? 'is-flipped' : ''}`}>
                         <div className="flashcard-face absolute inset-0 rounded-2xl border border-border bg-card shadow-sm p-6 flex flex-col items-center justify-center text-center">
-                          <Badge variant="outline" className={`mb-4 ${TIER_INFO[words[cardIndex].tier]?.classes || ''}`}>
-                            {words[cardIndex].tier}
+                          <Badge variant="outline" className={`mb-4 ${tierInfo(words[cardIndex].tier).badgeClass}`}>
+                            {tierInfo(words[cardIndex].tier).label}
                           </Badge>
                           <div className="flex items-center gap-1 mb-2">
                             <span className="text-2xl font-semibold text-foreground">{words[cardIndex].word}</span>
