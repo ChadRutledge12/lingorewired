@@ -72,11 +72,14 @@ export default function ReviewClient({ deckId, deckName, initialCards }) {
 
   const current = cards[index]
   const done = index >= cards.length
-  const revealed = mode === 'flip' ? flipped : checked
+  // In Smart mode the exercise is chosen per card from its mastery; otherwise
+  // the learner's picked mode drives every card.
+  const activeMode = mode === 'smart' && current ? smartModeFor(current) : mode
+  const revealed = activeMode === 'flip' ? flipped : checked
   // null when the word can't be confidently located in the example sentence
   // (irregular conjugations mostly) — cloze mode falls back to a translation
   // prompt like Type mode in that case rather than guessing wrong.
-  const cloze = mode === 'cloze' && current ? buildCloze(current.example, current.word) : null
+  const cloze = activeMode === 'cloze' && current ? buildCloze(current.example, current.word) : null
   // What the typed answer is actually graded against — the blanked token for
   // cloze (may be a conjugated form, e.g. "como" not "comer"), the dictionary
   // word otherwise.
@@ -137,7 +140,7 @@ export default function ReviewClient({ deckId, deckName, initialCards }) {
     const onKey = (e) => {
       if (done) return
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return
-      if (mode === 'flip') {
+      if (activeMode === 'flip') {
         if (e.key === ' ' || e.key === 'Enter') {
           e.preventDefault()
           setFlipped((f) => !f)
@@ -150,15 +153,15 @@ export default function ReviewClient({ deckId, deckName, initialCards }) {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [done, flipped, checked, mode, rateCard])
+  }, [done, flipped, checked, activeMode, rateCard])
 
   // Listening mode plays the word as soon as it's on screen, since there's
   // no text to look at yet — synchronizing audio playback with which card is
   // showing, not a state update, so this is a legitimate effect.
   useEffect(() => {
-    if (mode === 'listen' && current && !checked) speak(current.word, voiceGender)
+    if (activeMode === 'listen' && current && !checked) speak(current.word, voiceGender)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, current, checked])
+  }, [activeMode, current, checked])
 
   return (
     <div className="min-h-screen flex flex-col bg-muted/40 p-4 sm:p-6">
@@ -190,7 +193,8 @@ export default function ReviewClient({ deckId, deckName, initialCards }) {
         ) : (
           <>
             <Tabs value={mode} onValueChange={handleModeChange} className="mb-4">
-              <TabsList className="grid grid-cols-4 w-full">
+              <TabsList className="grid grid-cols-5 w-full">
+                <TabsTrigger value="smart">Smart</TabsTrigger>
                 <TabsTrigger value="flip">Flip</TabsTrigger>
                 <TabsTrigger value="type">Type</TabsTrigger>
                 <TabsTrigger value="listen">Listen</TabsTrigger>
@@ -198,9 +202,16 @@ export default function ReviewClient({ deckId, deckName, initialCards }) {
               </TabsList>
             </Tabs>
 
-            <Progress value={(index / cards.length) * 100} className="mb-4" />
+            <div className="mb-4 flex items-center gap-2">
+              <Progress value={(index / cards.length) * 100} className="flex-1" />
+              {mode === 'smart' && (
+                <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
+                  {SMART_LABELS[activeMode]}
+                </span>
+              )}
+            </div>
 
-            {mode === 'flip' ? (
+            {activeMode === 'flip' ? (
               <div key={current.id} className="flashcard-scene card-enter h-64 mb-4">
                 <div
                   onClick={() => setFlipped((f) => !f)}
@@ -243,7 +254,7 @@ export default function ReviewClient({ deckId, deckName, initialCards }) {
                   </Badge>
                 )}
 
-                {mode === 'listen' ? (
+                {activeMode === 'listen' ? (
                   <div className="flex flex-col items-center mb-4">
                     <Button
                       type="button"
@@ -256,7 +267,7 @@ export default function ReviewClient({ deckId, deckName, initialCards }) {
                     </Button>
                     <span className="text-xs text-muted-foreground">Listen, then type what you heard</span>
                   </div>
-                ) : mode === 'cloze' && cloze ? (
+                ) : activeMode === 'cloze' && cloze ? (
                   <>
                     <p className="text-base text-foreground mb-1">
                       {cloze.before}
@@ -279,7 +290,7 @@ export default function ReviewClient({ deckId, deckName, initialCards }) {
                       autoFocus
                       value={typedAnswer}
                       onChange={(e) => setTypedAnswer(e.target.value)}
-                      placeholder={mode === 'listen' ? 'Type what you heard...' : mode === 'cloze' && cloze ? 'Fill in the blank...' : 'Type the Spanish word...'}
+                      placeholder={activeMode === 'listen' ? 'Type what you heard...' : activeMode === 'cloze' && cloze ? 'Fill in the blank...' : 'Type the Spanish word...'}
                       className="text-center rounded-xl"
                     />
                     <Button type="submit" className="shrink-0 rounded-xl">Check</Button>
@@ -308,7 +319,7 @@ export default function ReviewClient({ deckId, deckName, initialCards }) {
 
             {revealed ? (
               <RatingButtons intervals={current.intervals} submitting={submitting} onRate={rateCard} />
-            ) : mode === 'flip' ? (
+            ) : activeMode === 'flip' ? (
               <Button onClick={() => setFlipped(true)} className="w-full rounded-xl">
                 Show answer
               </Button>
@@ -318,8 +329,8 @@ export default function ReviewClient({ deckId, deckName, initialCards }) {
 
             <p className="mt-3 text-center text-xs text-muted-foreground">
               {index + 1} / {cards.length}
-              {mode === 'flip' && <span className="hidden sm:inline"> · space to flip · 1&ndash;4 to rate</span>}
-              {mode !== 'flip' && checked && <span className="hidden sm:inline"> · 1&ndash;4 to rate</span>}
+              {activeMode === 'flip' && <span className="hidden sm:inline"> · space to flip · 1&ndash;4 to rate</span>}
+              {activeMode !== 'flip' && checked && <span className="hidden sm:inline"> · 1&ndash;4 to rate</span>}
             </p>
           </>
         )}
