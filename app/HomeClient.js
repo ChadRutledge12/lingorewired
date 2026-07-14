@@ -21,6 +21,7 @@ import VoiceDebugInfo from '@/components/VoiceDebugInfo'
 import SuggestionsList from '@/components/SuggestionsList'
 import Logo from '@/components/Logo'
 import GenerationProgress from '@/components/GenerationProgress'
+import Calibration from '@/components/Calibration'
 import { useVoiceGender } from '@/lib/useVoiceGender'
 
 const LEVEL_OPTIONS = ['Complete beginner', 'A1 — I know a little', 'A2 — Basic phrases', 'B1 — Conversational', 'B2+ — Comfortable']
@@ -127,6 +128,16 @@ export default function Home({ user, lastProfile, startNew = false }) {
   // return straight to the summary instead of marching through every step.
   const [editReturn, setEditReturn] = useState(false)
   const [focusTopic, setFocusTopic] = useState('')
+  // Placement calibration (shown once before the first generation). `knownWords`
+  // are the words the learner tapped as already-known — fed to the generator as
+  // existing words so it doesn't waste the set re-teaching them.
+  const [calibrating, setCalibrating] = useState(false)
+  const [knownWords, setKnownWords] = useState([])
+  // Fast path for a time-pressed learner (e.g. a trip in two weeks): skip
+  // goals/interests/contexts with sensible travel defaults, asking only for
+  // level + location — two taps instead of six. Calibration still runs
+  // (it's already skippable) so the level stays accurate.
+  const [fastPath, setFastPath] = useState(false)
   const [loading, setLoading] = useState(false)
   const [words, setWords] = useState([])
   const [suggestions, setSuggestions] = useState([])
@@ -173,6 +184,7 @@ export default function Home({ user, lastProfile, startNew = false }) {
   // Returning users skip the questionnaire: their last deck's profile is
   // preloaded and they land on the summary, where any field can be edited.
   const startNewSet = () => {
+    setFastPath(false)
     if (lastProfile) {
       // Dedupe the carried-over multi-select answers — older profiles can
       // hold duplicate custom entries from before the add paths deduped.
@@ -185,6 +197,20 @@ export default function Home({ user, lastProfile, startNew = false }) {
     } else {
       setStep(1)
     }
+  }
+
+  // Sensible defaults for a learner in a hurry — travel/essentials-flavored,
+  // editable later from the summary if they want to refine it.
+  const startFastPath = () => {
+    setAnswers({
+      ...EMPTY_ANSWERS,
+      nativeLanguage: 'English',
+      goals: ['Travel & get around'],
+      interests: ['Food & cooking'],
+      contexts: ['Restaurants & cafes', 'Hotels & travel', 'Shops & markets', 'Emergencies'],
+    })
+    setFastPath(true)
+    setStep(1)
   }
 
   // Step navigation that understands "I'm just editing one answer".
@@ -206,8 +232,37 @@ export default function Home({ user, lastProfile, startNew = false }) {
     setFocusTopic('')
   }
 
+  // Initial generation goes through a quick placement step first. "Add more"
+  // and topic picks (already-generated set) skip this and call generateWords
+  // directly, so calibration only fronts the very first set.
+  const beginCalibration = () => {
+    setError('')
+    setCalibrating(true)
+  }
+
+  const handleCalibrationComplete = ({ level, knownWords: known }) => {
+    // Persist the calibrated level onto the profile so the summary — and the
+    // saved deck.profile — reflect it, then generate with the known words fed in.
+    const updated = { ...answers, level }
+    setAnswers(updated)
+    setKnownWords(known)
+    setCalibrating(false)
+    generateWords({ ...updated, knownWords: known })
+  }
+
+  const handleCalibrationSkip = () => {
+    setCalibrating(false)
+    generateWords()
+  }
+
   const generateWords = async (profileOverride) => {
     const profile = profileOverride || answers
+    // `knownWords` may ride in on the override (from calibration); otherwise fall
+    // back to state so any calibration carries through to "add more" too. Keep
+    // the raw array out of the request body — the API only wants existingWords.
+    const { knownWords: overrideKnown, ...profileFields } = profile
+    const known = overrideKnown?.length ? overrideKnown : knownWords
+    const existingWords = [...words.map(w => w.word), ...known].join(', ')
     setLoading(true)
     setError('')
     setSavedDeckId(null)
@@ -217,9 +272,9 @@ export default function Home({ user, lastProfile, startNew = false }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ...profile,
+          ...profileFields,
           addMore: step === 8,
-          existingWords: words.map(w => w.word).join(', ')
+          existingWords
         })
       })
       if (response.status === 401) { router.push('/login?next=/'); return }
@@ -320,6 +375,16 @@ export default function Home({ user, lastProfile, startNew = false }) {
     <div className="min-h-screen flex items-center justify-center bg-muted/40 p-4 sm:p-6">
       <div className={`bg-card text-card-foreground rounded-2xl shadow-sm ring-1 ring-foreground/10 p-6 sm:p-8 w-full transition-[max-width] ${step === 8 && viewMode === 'list' ? 'max-w-2xl' : 'max-w-md'}`}>
 
+        {calibrating ? (
+          <Calibration
+            selfLevel={answers.level}
+            levelOptions={LEVEL_OPTIONS}
+            onComplete={handleCalibrationComplete}
+            onSkip={handleCalibrationSkip}
+          />
+        ) : (
+        <>
+
         {/* Progress dots */}
         {step >= 1 && step <= 6 && (
           <div className="flex gap-2 mb-8">
@@ -349,9 +414,15 @@ export default function Home({ user, lastProfile, startNew = false }) {
                 <Button asChild className="w-full h-12 rounded-xl text-base mb-2">
                   <Link href="/decks">Continue learning →</Link>
                 </Button>
-                <Button variant="outline" onClick={startNewSet} className="w-full h-12 rounded-xl text-base">
+                <Button variant="outline" onClick={startNewSet} className="w-full h-12 rounded-xl text-base mb-2">
                   Create a new set
                 </Button>
+                <button
+                  type="button"
+                  onClick={startFastPath}
+                  className="w-full text-center text-sm text-muted-foreground hover:text-foreground">
+                  In a hurry? Get travel essentials in 2 taps →
+                </button>
               </>
             ) : (
               <>
@@ -377,11 +448,19 @@ export default function Home({ user, lastProfile, startNew = false }) {
           <div>
             <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1">Step 1 of 6</p>
             <h2 className="text-xl font-semibold mb-1 text-foreground">What&apos;s your current level?</h2>
-            <p className="text-muted-foreground text-sm mb-6">Be honest — we&apos;ll pitch the words at the right difficulty.</p>
+            <p className={`text-muted-foreground text-sm ${fastPath ? 'mb-1' : 'mb-6'}`}>Be honest — we&apos;ll pitch the words at the right difficulty.</p>
+            {fastPath && (
+              <p className="text-xs text-primary mb-6">
+                Fast path: travel essentials, one more tap for location.{' '}
+                <button type="button" onClick={() => setFastPath(false)} className="underline hover:no-underline">
+                  Answer all 6 questions instead
+                </button>
+              </p>
+            )}
             <ChipGroup type="single" options={LEVEL_OPTIONS} value={answers.level} onChange={v => selectOne('level', v)} />
             <div className="flex justify-between mt-4">
               <Button variant="ghost" onClick={() => goBack(0)} className="text-muted-foreground">Back</Button>
-              <Button onClick={() => goNext(2)} disabled={!answers.level} className="rounded-xl">{editReturn ? 'Done' : 'Continue'}</Button>
+              <Button onClick={() => goNext(fastPath ? 6 : 2)} disabled={!answers.level} className="rounded-xl">{editReturn ? 'Done' : 'Continue'}</Button>
             </div>
           </div>
         )}
@@ -534,7 +613,7 @@ export default function Home({ user, lastProfile, startNew = false }) {
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
-            <Button onClick={() => generateWords()} disabled={loading} className="w-full h-12 rounded-xl text-base">
+            <Button onClick={beginCalibration} disabled={loading} className="w-full h-12 rounded-xl text-base">
               {loading && <Loader2 className="size-4 animate-spin" />}
               {loading ? 'Generating...' : 'Generate my words'}
             </Button>
@@ -560,7 +639,7 @@ export default function Home({ user, lastProfile, startNew = false }) {
             </div>
             <p className="text-muted-foreground text-sm mb-4">Personalised for you — start learning.</p>
             <div className="flex flex-col sm:flex-row gap-2 mb-4">
-              <Button variant="outline" onClick={() => setStep(0)} className="rounded-xl">
+              <Button variant="outline" onClick={() => { setFastPath(false); setStep(0) }} className="rounded-xl">
                 Start over
               </Button>
               <Button onClick={() => generateWords()} disabled={loading} className="rounded-xl">
@@ -746,6 +825,9 @@ export default function Home({ user, lastProfile, startNew = false }) {
               </div>
             )}
           </div>
+        )}
+
+        </>
         )}
 
       </div>

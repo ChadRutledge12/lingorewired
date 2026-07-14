@@ -18,6 +18,22 @@ const SIZE_CLASSES = {
   4: 'text-3xl',
 }
 
+// A 4-pip "signal strength" meter conveying mastery by COUNT of filled pips,
+// not hue — the cloud's word color alone isn't a safe signal (New=rose vs
+// Mastered=emerald is exactly the pair red-green colorblindness confuses),
+// and the previous hover-only `title` tooltip never fires on touch, which
+// this phone-first app is mostly used on. `bg-current` ties pip color to
+// the word's own text color so it still reads as one cohesive mark.
+function MasteryPips({ level }) {
+  return (
+    <span className="inline-flex items-center gap-0.5 align-middle" aria-hidden="true">
+      {[1, 2, 3, 4].map((i) => (
+        <span key={i} className={`inline-block size-1 rounded-full bg-current ${i <= level ? '' : 'opacity-20'}`} />
+      ))}
+    </span>
+  )
+}
+
 // Deterministic shuffle keyed on the word itself, so the cloud has an
 // organic mixed look but words don't jump around between visits/renders.
 function cloudOrder(cards) {
@@ -140,10 +156,12 @@ export default function CloudClient({ cards, deckNames }) {
                     type="button"
                     onClick={() => setSelected(card)}
                     title={`${card.translation} · ${mastery.label}`}
-                    className={`${SIZE_CLASSES[mastery.level]} ${mastery.textClass} font-semibold transition hover:underline decoration-dotted underline-offset-4 hover:opacity-100 ${
+                    aria-label={`${card.word}, ${card.translation}, mastery: ${mastery.label}`}
+                    className={`inline-flex items-center gap-1 ${SIZE_CLASSES[mastery.level]} ${mastery.textClass} font-semibold transition hover:underline decoration-dotted underline-offset-4 hover:opacity-100 ${
                       dimmed ? 'opacity-15' : 'opacity-90'
                     }`}>
                     {card.word}
+                    <MasteryPips level={mastery.level} />
                   </button>
                 )
               })}
