@@ -2,9 +2,8 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Loader2, X, PartyPopper, Save, Download, LogOut, Pencil, Plus } from 'lucide-react'
+import { Loader2, X, PartyPopper, Download, LogOut, Pencil, Plus } from 'lucide-react'
 import { exportDeckPdf } from '@/lib/exportPdf'
-import { normalizeWord } from '@/lib/normalizeWord'
 import { tierInfo } from '@/lib/tier'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -145,8 +144,6 @@ export default function Home({ user, lastProfile, startNew = false }) {
   const [viewMode, setViewMode] = useState('flashcard')
   const [cardIndex, setCardIndex] = useState(0)
   const [cardFlipped, setCardFlipped] = useState(false)
-  const [saveOpen, setSaveOpen] = useState(false)
-  const [saveName, setSaveName] = useState('')
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
   const [savedDeckId, setSavedDeckId] = useState(null)
@@ -255,42 +252,38 @@ export default function Home({ user, lastProfile, startNew = false }) {
     generateWords()
   }
 
+  // Generates the FIRST batch only (from the summary, after calibration).
+  // Subsequent additions ("+ Add 6 more", picking a suggested topic) go
+  // through addMoreWords/the amplify endpoint instead, since by then the
+  // deck already exists and should be extended directly, not regenerated
+  // locally and saved later.
   const generateWords = async (profileOverride) => {
     const profile = profileOverride || answers
-    // `knownWords` may ride in on the override (from calibration); otherwise fall
-    // back to state so any calibration carries through to "add more" too. Keep
-    // the raw array out of the request body — the API only wants existingWords.
-    const { knownWords: overrideKnown, ...profileFields } = profile
-    const known = overrideKnown?.length ? overrideKnown : knownWords
-    const existingWords = [...words.map(w => w.word), ...known].join(', ')
+    // `knownWords` rides in on the override from calibration — keep the raw
+    // array out of the request body, the API only wants existingWords text.
+    const { knownWords: known = [], ...profileFields } = profile
     setLoading(true)
     setError('')
     setSavedDeckId(null)
-    setSaveOpen(false)
+    setSaveError('')
     try {
       const response = await fetch('/api/generate-words', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...profileFields,
-          addMore: step === 8,
-          existingWords
-        })
+        body: JSON.stringify({ ...profileFields, existingWords: known.join(', ') })
       })
       if (response.status === 401) { router.push('/login?next=/'); return }
       const data = await response.json()
       if (!response.ok) throw new Error(data.error || 'Failed to generate words')
-      setWords(prev => {
-        if (step !== 8) return data.words
-        const existing = prev.map(w => normalizeWord(w.word))
-        const filtered = data.words.filter(w => !existing.includes(normalizeWord(w.word)))
-        return [...prev, ...filtered]
-      })
-      if (step !== 8) setViewMode('flashcard')
+      setWords(data.words)
+      setViewMode('flashcard')
       setCardIndex(0)
       setCardFlipped(false)
       setStep(8)
       generateSuggestions(profile, data.words)
+      // Auto-save immediately — full deck functionality (review, etc.) is
+      // available right away instead of requiring a separate save step.
+      createDeck(profile, data.words)
     } catch (error) {
       console.error('Error:', error)
       setError(error.message || 'Something went wrong generating your words. Please try again.')
@@ -317,39 +310,61 @@ export default function Home({ user, lastProfile, startNew = false }) {
     }
   }
 
-  const addTopic = (topic) => {
-    // Don't re-add a topic the learner already has as an interest.
-    const interests = answers.interests.includes(topic) ? answers.interests : [...answers.interests, topic]
-    const updated = { ...answers, interests }
-    setAnswers(updated)
-    generateWords(updated)
-  }
-
-  const defaultDeckName = () => {
-    const focus = answers.interests[0] || answers.location || 'Spanish'
+  const defaultDeckNameFor = (profile) => {
+    const focus = profile.interests?.[0] || profile.location || 'Spanish'
     return `${focus} · ${new Date().toLocaleDateString()}`
   }
+  const defaultDeckName = () => defaultDeckNameFor(answers)
 
-  const saveDeck = async () => {
-    const name = saveName.trim()
-    if (!name) { setSaveError('Please name your deck'); return }
+  // Auto-saves the just-generated batch as a new deck — no manual "save"
+  // step, so full deck functionality (review, etc.) is available right away.
+  const createDeck = async (profile, generatedWords) => {
     setSaving(true)
     setSaveError('')
     try {
       const res = await fetch('/api/decks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, words, profile: answers }),
+        body: JSON.stringify({ name: defaultDeckNameFor(profile), words: generatedWords, profile }),
       })
       if (res.status === 401) { router.push('/login?next=/'); return }
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to save deck')
       setSavedDeckId(data.deckId)
-      setSaveOpen(false)
     } catch (err) {
-      setSaveError(err.message || 'Failed to save deck')
+      setSaveError(err.message || 'Failed to save your deck automatically')
     } finally {
       setSaving(false)
+    }
+  }
+
+  // Extends the already-saved deck directly (used by both "+ Add 6 more
+  // words" and picking a suggested topic) via the amplify endpoint, which
+  // generates in the deck's context and persists in one call — no local
+  // accumulation + separate save needed since the deck already exists.
+  const addMoreWords = async (topic) => {
+    if (!savedDeckId) return
+    setLoading(true)
+    setError('')
+    try {
+      const res = await fetch(`/api/decks/${savedDeckId}/amplify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(topic ? { topic } : {}),
+      })
+      if (res.status === 401) { router.push('/login?next=/'); return }
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to generate more words')
+      if (topic) {
+        setAnswers(prev => prev.interests.includes(topic) ? prev : { ...prev, interests: [...prev.interests, topic] })
+      }
+      const next = [...words, ...(data.cards || [])]
+      setWords(next)
+      generateSuggestions(answers, next)
+    } catch (err) {
+      setError(err.message || 'Something went wrong. Please try again.')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -642,7 +657,7 @@ export default function Home({ user, lastProfile, startNew = false }) {
               <Button variant="outline" onClick={() => { setFastPath(false); setStep(0) }} className="rounded-xl">
                 Start over
               </Button>
-              <Button onClick={() => generateWords()} disabled={loading} className="rounded-xl">
+              <Button onClick={() => addMoreWords()} disabled={loading || !savedDeckId} className="rounded-xl">
                 {loading && <Loader2 className="size-4 animate-spin" />}
                 {loading ? 'Adding...' : '+ Add 6 more words'}
               </Button>
@@ -662,7 +677,9 @@ export default function Home({ user, lastProfile, startNew = false }) {
               </div>
             )}
 
-            {/* Save to deck */}
+            {/* The deck saves itself automatically as soon as words are
+                generated — no separate "save" step, so review and every
+                other deck feature are available right away. */}
             <div className="mb-4">
               {savedDeckId ? (
                 <Alert>
@@ -671,31 +688,20 @@ export default function Home({ user, lastProfile, startNew = false }) {
                     <Link href={`/review/${savedDeckId}`} className="font-medium text-primary hover:underline shrink-0">Review now →</Link>
                   </AlertDescription>
                 </Alert>
-              ) : saveOpen ? (
-                <div>
-                  <div className="flex gap-2">
-                    <Input
-                      value={saveName}
-                      onChange={(e) => setSaveName(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); saveDeck() } }}
-                      placeholder="Deck name"
-                      className="rounded-xl"
-                      autoFocus
-                    />
-                    <Button onClick={saveDeck} disabled={saving} className="shrink-0 rounded-xl">
+              ) : saveError ? (
+                <Alert variant="destructive">
+                  <AlertDescription className="flex items-center justify-between gap-2">
+                    <span>{saveError}</span>
+                    <Button size="sm" variant="outline" disabled={saving} onClick={() => createDeck(answers, words)} className="shrink-0 rounded-xl">
                       {saving && <Loader2 className="size-4 animate-spin" />}
-                      Save
+                      Retry
                     </Button>
-                  </div>
-                  {saveError && <p className="text-sm text-red-500 mt-1">{saveError}</p>}
-                </div>
+                  </AlertDescription>
+                </Alert>
               ) : (
-                <Button
-                  variant="outline"
-                  onClick={() => { setSaveOpen(true); if (!saveName) setSaveName(defaultDeckName()) }}
-                  className="w-full rounded-xl">
-                  <Save className="size-4" /> Save these {words.length} words to a deck
-                </Button>
+                <p className="text-sm text-muted-foreground flex items-center gap-1.5">
+                  <Loader2 className="size-3.5 animate-spin" /> Saving to your decks…
+                </p>
               )}
             </div>
 
@@ -738,7 +744,7 @@ export default function Home({ user, lastProfile, startNew = false }) {
                   {suggestions.length > 0 && (
                     <div className="mt-6 pt-6 border-t border-border text-left">
                       <p className="text-xs text-muted-foreground uppercase tracking-widest mb-3">Suggested next topics</p>
-                      <SuggestionsList suggestions={suggestions} onSelect={addTopic} />
+                      <SuggestionsList suggestions={suggestions} onSelect={(topic) => addMoreWords(topic)} />
                     </div>
                   )}
                 </div>
@@ -819,7 +825,7 @@ export default function Home({ user, lastProfile, startNew = false }) {
                 {suggestions.length > 0 && (
                   <div className="mt-6 pt-6 border-t border-border">
                     <p className="text-xs text-muted-foreground uppercase tracking-widest mb-3">Suggested next topics</p>
-                    <SuggestionsList suggestions={suggestions} onSelect={addTopic} />
+                    <SuggestionsList suggestions={suggestions} onSelect={(topic) => addMoreWords(topic)} />
                   </div>
                 )}
               </div>
