@@ -27,6 +27,19 @@ const RATING_BUTTONS = [
   { key: 'easy', label: 'Easy', classes: 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100' },
 ]
 
+// Smart mode picks the exercise per card from its mastery: New/Learning stay
+// on recognition (Flip) since production would be premature; Familiar moves
+// to cued recall (Cloze when the word can be confidently blanked, else Type);
+// Mastered demands full production (Type).
+const SMART_LABELS = { flip: 'Recognize', cloze: 'Cued recall', type: 'Produce' }
+
+function smartModeFor(card) {
+  const level = masteryOf(card).level
+  if (level <= 2) return 'flip'
+  if (level === 3) return buildCloze(card.example, card.word) ? 'cloze' : 'type'
+  return 'type'
+}
+
 function RatingButtons({ intervals, submitting, onRate }) {
   return (
     <div className="grid grid-cols-4 gap-2">
