@@ -58,6 +58,24 @@ function RatingButtons({ intervals, submitting, onRate }) {
   )
 }
 
+// Shows the session's ratings back to the learner — the whole point of
+// tagging difficulty during review is that it schedules future practice,
+// but that was previously invisible: the done screen said nothing about
+// what just happened. This makes the consequence visible immediately.
+function RatingTally({ log }) {
+  if (log.length === 0) return null
+  const counts = RATING_BUTTONS.map((b) => ({ ...b, count: log.filter((r) => r === b.key).length }))
+  return (
+    <div className="flex flex-wrap items-center justify-center gap-1.5 mb-6">
+      {counts.filter((c) => c.count > 0).map((c) => (
+        <span key={c.key} className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium ${c.classes}`}>
+          {c.count} {c.label}
+        </span>
+      ))}
+    </div>
+  )
+}
+
 // Lenient comparison for typed answers: case/accent-insensitive, and forgives
 // a missing leading article (e.g. typing "pan" for the stored word "el pan").
 function normalizeForCompare(str) {
@@ -76,6 +94,9 @@ export default function ReviewClient({ deckId, deckName, initialCards }) {
   const [flipped, setFlipped] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+  // This session's ratings, in order — powers the RatingTally on the done
+  // screen so difficulty-tagging has a visible payoff, not a silent one.
+  const [ratingLog, setRatingLog] = useState([])
   const { gender: voiceGender, setGender: setVoiceGender } = useVoiceGender()
   const { mode, setMode } = useReviewMode()
 
@@ -137,6 +158,7 @@ export default function ReviewClient({ deckId, deckName, initialCards }) {
       }
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to save review')
+      setRatingLog((log) => [...log, rating])
       setFlipped(false)
       setChecked(false)
       setTypedAnswer('')
@@ -148,6 +170,16 @@ export default function ReviewClient({ deckId, deckName, initialCards }) {
       setSubmitting(false)
     }
   }, [submitting, current, deckId, router])
+
+  // Flips back through the SAME already-loaded set for another pass — no
+  // network round-trip needed, and it works regardless of the due dates
+  // that just got pushed out by rating. Without this, finishing a session
+  // was a dead end: "Back to decks" was the only option.
+  const reviewAgain = () => {
+    setIndex(0)
+    setRatingLog([])
+    resetCardState()
+  }
 
   useEffect(() => {
     const onKey = (e) => {
@@ -196,10 +228,19 @@ export default function ReviewClient({ deckId, deckName, initialCards }) {
           <div className="text-center py-6">
             <div className="text-4xl mb-2">🎉</div>
             <h2 className="text-lg font-semibold text-foreground mb-1">Review complete!</h2>
-            <p className="text-sm text-muted-foreground mb-6">
+            <p className="text-sm text-muted-foreground mb-4">
               You reviewed {cards.length} card{cards.length === 1 ? '' : 's'}. Nicely done.
             </p>
-            <Button asChild className="w-full rounded-xl">
+            <RatingTally log={ratingLog} />
+            <div className="flex flex-col sm:flex-row gap-2 mb-2">
+              <Button variant="outline" onClick={reviewAgain} className="flex-1 rounded-xl">
+                Flip through again
+              </Button>
+              <Button asChild className="flex-1 rounded-xl">
+                <Link href={deckId ? `/decks/${deckId}` : '/cloud'}>See updated mastery →</Link>
+              </Button>
+            </div>
+            <Button asChild variant="ghost" className="w-full rounded-xl text-muted-foreground">
               <Link href="/decks">Back to decks</Link>
             </Button>
           </div>
