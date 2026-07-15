@@ -59,9 +59,13 @@ No explanation, no markdown, just the JSON array.`
   const data = await response.json()
 
   if (!response.ok) {
+    // Anthropic's own 401/403 must not be forwarded as-is — the client
+    // treats a 401 from this endpoint as "you're logged out" and redirects
+    // to /login, which is wrong when it's actually an upstream key/auth issue.
+    const status = response.status === 401 || response.status === 403 ? 502 : response.status
     return Response.json(
       { error: data.error?.message || 'Failed to generate suggestions' },
-      { status: response.status }
+      { status }
     )
   }
 
