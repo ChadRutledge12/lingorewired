@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { rate } from '@/lib/fsrs'
+import { utcDateStr } from '@/lib/stats'
 
 // Apply an FSRS rating to a card: reschedule it and log the review.
 export async function POST(request) {
@@ -46,6 +47,43 @@ export async function POST(request) {
   await supabase
     .from('review_logs')
     .insert({ card_id: cardId, user_id: user.id, ...result.log })
+
+  // Best-effort streak-freeze bookkeeping: if exactly yesterday was missed
+  // (today - 2 was the last active day) and a freeze is banked, spend it to
+  // bridge the gap instead of letting the streak reset. Anything else (same
+  // day repeat, normal consecutive day, or too big a gap) just bumps
+  // last_review_date — computeStreak (lib/stats.js) reflects the rest.
+  try {
+    const today = utcDateStr(0)
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('daily_goal, streak_freezes, frozen_dates, last_review_date')
+      .eq('user_id', user.id)
+      .maybeSingle()
+
+    if (profile?.last_review_date !== today) {
+      const yesterday = utcDateStr(1)
+      const twoDaysAgo = utcDateStr(2)
+      let streakFreezes = profile?.streak_freezes ?? 1
+      let frozenDates = profile?.frozen_dates ?? []
+      if (profile?.last_review_date === twoDaysAgo && streakFreezes > 0 && !frozenDates.includes(yesterday)) {
+        streakFreezes -= 1
+        frozenDates = [...frozenDates, yesterday]
+      }
+      await supabase.from('profiles').upsert(
+        {
+          user_id: user.id,
+          daily_goal: profile?.daily_goal ?? 20,
+          streak_freezes: streakFreezes,
+          frozen_dates: frozenDates,
+          last_review_date: today,
+        },
+        { onConflict: 'user_id' }
+      )
+    }
+  } catch {
+    // Never fail a review over streak bookkeeping.
+  }
 
   return Response.json({ ok: true, due: result.fields.due, state: result.fields.state })
 }

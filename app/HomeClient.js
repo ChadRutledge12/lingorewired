@@ -144,6 +144,13 @@ export default function Home({ user, lastProfile, startNew = false }) {
   const [viewMode, setViewMode] = useState('flashcard')
   const [cardIndex, setCardIndex] = useState(0)
   const [cardFlipped, setCardFlipped] = useState(false)
+  // Per-card self-rating from flashcard mode, keyed by index into `words`
+  // ('learning' | 'easy'). Drives "Review again": hardest (and unrated)
+  // cards come back, "easy" ones are dropped from the next pass. `reviewOrder`
+  // is null for the normal sequential pass, or an explicit index order once
+  // a filtered "Review again" pass has been built.
+  const [cardRatings, setCardRatings] = useState({})
+  const [reviewOrder, setReviewOrder] = useState(null)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
   const [savedDeckId, setSavedDeckId] = useState(null)
@@ -208,6 +215,8 @@ export default function Home({ user, lastProfile, startNew = false }) {
     setViewMode('flashcard')
     setCardIndex(0)
     setCardFlipped(false)
+    setCardRatings({})
+    setReviewOrder(null)
     setSuggestions([])
     setStep(8)
     generateSuggestions(profile, guide.words)
@@ -283,6 +292,8 @@ export default function Home({ user, lastProfile, startNew = false }) {
       setViewMode('flashcard')
       setCardIndex(0)
       setCardFlipped(false)
+      setCardRatings({})
+      setReviewOrder(null)
       setStep(8)
       generateSuggestions(profile, data.words)
       // Auto-save immediately — full deck functionality (review, etc.) is
@@ -362,8 +373,15 @@ export default function Home({ user, lastProfile, startNew = false }) {
       if (topic) {
         setAnswers(prev => prev.interests.includes(topic) ? prev : { ...prev, interests: [...prev.interests, topic] })
       }
-      const next = [...words, ...(data.cards || [])]
+      const newCards = data.cards || []
+      const next = [...words, ...newCards]
       setWords(next)
+      // If a filtered "Review again" pass is active, append the new cards to
+      // it too — otherwise they'd be added to `words` but never appear in
+      // flashcard mode until the next full reset.
+      if (newCards.length > 0) {
+        setReviewOrder(prev => prev == null ? null : [...prev, ...newCards.map((_, k) => words.length + k)])
+      }
       generateSuggestions(answers, next)
     } catch (err) {
       setError(err.message || 'Something went wrong. Please try again.')
@@ -372,12 +390,38 @@ export default function Home({ user, lastProfile, startNew = false }) {
     }
   }
 
+  // The order flashcard mode actually walks: sequential 0..N-1 normally, or
+  // the filtered/reordered subset built by reviewAgain() after a first pass.
+  const activeOrder = reviewOrder ?? words.map((_, i) => i)
+  const currentCard = words[activeOrder[cardIndex]]
+
+  const rateCard = (rating) => {
+    const wordIdx = activeOrder[cardIndex]
+    setCardRatings(prev => ({ ...prev, [wordIdx]: rating }))
+    setCardFlipped(false)
+    setCardIndex(i => Math.min(i + 1, activeOrder.length))
+  }
+
+  // Hardest (self-rated "still learning") first, then anything not yet
+  // rated (skipped via Prev/Next without flipping) — "easy" cards are
+  // dropped entirely, so each pass narrows toward just the tricky words.
+  const weakIndices = [
+    ...activeOrder.filter(i => cardRatings[i] === 'learning'),
+    ...activeOrder.filter(i => cardRatings[i] == null),
+  ]
+
+  const reviewAgain = () => {
+    setReviewOrder(weakIndices)
+    setCardIndex(0)
+    setCardFlipped(false)
+  }
+
   useEffect(() => {
     if (step !== 8 || viewMode !== 'flashcard') return
     const handleKey = (e) => {
       if (e.key === 'ArrowRight') {
         setCardFlipped(false)
-        setCardIndex(i => Math.min(i + 1, words.length))
+        setCardIndex(i => Math.min(i + 1, activeOrder.length))
       } else if (e.key === 'ArrowLeft') {
         setCardFlipped(false)
         setCardIndex(i => Math.max(i - 1, 0))
@@ -388,7 +432,7 @@ export default function Home({ user, lastProfile, startNew = false }) {
     }
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
-  }, [step, viewMode, words.length])
+  }, [step, viewMode, activeOrder.length])
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted/40 p-4 sm:p-6">
@@ -731,15 +775,21 @@ export default function Home({ user, lastProfile, startNew = false }) {
             {/* Flashcard mode */}
             {viewMode === 'flashcard' && (
               <div className="mx-auto max-w-md">
-                {cardIndex >= words.length ? (
+                {cardIndex >= activeOrder.length ? (
                 <div className="text-center py-4">
                   <PartyPopper className="mx-auto mb-2 size-10 text-primary" />
                   <h3 className="text-lg font-semibold text-foreground mb-1">Batch complete!</h3>
-                  <p className="text-muted-foreground text-sm mb-6">You reviewed all {words.length} words.</p>
+                  <p className="text-muted-foreground text-sm mb-6">You reviewed all {activeOrder.length} words.</p>
                   <div className="flex flex-col sm:flex-row gap-2 mb-2">
-                    <Button variant="outline" onClick={() => { setCardIndex(0); setCardFlipped(false) }} className="flex-1 rounded-xl">
-                      Review again
-                    </Button>
+                    {weakIndices.length > 0 ? (
+                      <Button variant="outline" onClick={reviewAgain} className="flex-1 rounded-xl">
+                        Review again — hardest first
+                      </Button>
+                    ) : (
+                      <p className="flex-1 flex items-center justify-center text-sm text-muted-foreground border border-dashed border-border rounded-xl px-4 py-2">
+                        You know every word here 🎉
+                      </p>
+                    )}
                     <Button onClick={() => setViewMode('list')} className="flex-1 rounded-xl">
                       View as list
                     </Button>
@@ -758,35 +808,45 @@ export default function Home({ user, lastProfile, startNew = false }) {
                 </div>
               ) : (
                 <div>
-                  {words[cardIndex] && (
+                  {currentCard && (
                     <div className="flashcard-scene h-64 mb-4">
                       <div
                         onClick={() => setCardFlipped(f => !f)}
                         className={`flashcard relative w-full h-full cursor-pointer ${cardFlipped ? 'is-flipped' : ''}`}>
                         <div className="flashcard-face absolute inset-0 rounded-2xl border border-border bg-card shadow-sm p-6 flex flex-col items-center justify-center text-center">
-                          <Badge variant="outline" className={`mb-4 ${tierInfo(words[cardIndex].tier).badgeClass}`}>
-                            {tierInfo(words[cardIndex].tier).label}
+                          <Badge variant="outline" className={`mb-4 ${tierInfo(currentCard.tier).badgeClass}`}>
+                            {tierInfo(currentCard.tier).label}
                           </Badge>
                           <div className="flex items-center gap-1 mb-2">
-                            <span className="text-2xl font-semibold text-foreground">{words[cardIndex].word}</span>
-                            <SpeakButton text={words[cardIndex].word} gender={voiceGender} />
+                            <span className="text-2xl font-semibold text-foreground">{currentCard.word}</span>
+                            <SpeakButton text={currentCard.word} gender={voiceGender} />
                           </div>
-                          <span className="text-sm text-muted-foreground italic">{words[cardIndex].part_of_speech}</span>
+                          <span className="text-sm text-muted-foreground italic">{currentCard.part_of_speech}</span>
                           <span className="text-xs text-muted-foreground/70 mt-6">Tap to reveal</span>
                         </div>
                         <div className="flashcard-face flashcard-face-back absolute inset-0 rounded-2xl border border-primary/20 bg-primary/5 p-6 flex flex-col items-center justify-center text-center">
-                          <span className="text-xl font-semibold text-foreground mb-1">{words[cardIndex].translation}</span>
-                          <span className="text-xs text-muted-foreground italic mb-4">{words[cardIndex].part_of_speech}</span>
+                          <span className="text-xl font-semibold text-foreground mb-1">{currentCard.translation}</span>
+                          <span className="text-xs text-muted-foreground italic mb-4">{currentCard.part_of_speech}</span>
                           <div className="flex items-start gap-1">
-                            <span className="text-sm text-foreground/80 italic">{words[cardIndex].example}</span>
-                            <SpeakButton text={words[cardIndex].example} gender={voiceGender} className="shrink-0 -mt-1" />
+                            <span className="text-sm text-foreground/80 italic">{currentCard.example}</span>
+                            <SpeakButton text={currentCard.example} gender={voiceGender} className="shrink-0 -mt-1" />
                           </div>
-                          <span className="text-xs text-muted-foreground italic mt-1">{words[cardIndex].example_translation}</span>
+                          <span className="text-xs text-muted-foreground italic mt-1">{currentCard.example_translation}</span>
                         </div>
                       </div>
                     </div>
                   )}
-                  <Progress value={(cardIndex / words.length) * 100} className="mb-3" />
+                  {cardFlipped && (
+                    <div className="flex gap-2 mb-3">
+                      <Button variant="outline" onClick={() => rateCard('learning')} className="flex-1 rounded-xl">
+                        Still learning
+                      </Button>
+                      <Button onClick={() => rateCard('easy')} className="flex-1 rounded-xl">
+                        Got it!
+                      </Button>
+                    </div>
+                  )}
+                  <Progress value={(cardIndex / activeOrder.length) * 100} className="mb-3" />
                   <div className="flex items-center justify-between">
                     <Button
                       variant="ghost"
@@ -796,11 +856,11 @@ export default function Home({ user, lastProfile, startNew = false }) {
                       className="text-muted-foreground">
                       ← Prev
                     </Button>
-                    <span className="text-xs text-muted-foreground">{cardIndex + 1} / {words.length}</span>
+                    <span className="text-xs text-muted-foreground">{cardIndex + 1} / {activeOrder.length}</span>
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => { setCardFlipped(false); setCardIndex(i => Math.min(i + 1, words.length)) }}
+                      onClick={() => { setCardFlipped(false); setCardIndex(i => Math.min(i + 1, activeOrder.length)) }}
                       className="text-primary hover:text-primary">
                       Next →
                     </Button>

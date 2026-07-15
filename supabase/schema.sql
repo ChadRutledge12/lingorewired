@@ -94,6 +94,21 @@ create table if not exists public.readings (
   created_at  timestamptz not null default now()
 );
 
+-- ---------------------------------------------------------------------------
+-- Profiles: per-user habit-loop state (daily goal, streak-freeze bookkeeping,
+-- reminder-email opt-out). One row per user, created lazily on first review.
+-- ---------------------------------------------------------------------------
+create table if not exists public.profiles (
+  user_id           uuid primary key references auth.users (id) on delete cascade,
+  daily_goal        integer not null default 20,
+  streak_freezes    integer not null default 1,
+  frozen_dates      jsonb not null default '[]',
+  last_review_date  date,
+  reminders_enabled boolean not null default true,
+  unsubscribe_token uuid not null default gen_random_uuid(),
+  created_at        timestamptz not null default now()
+);
+
 -- Indexes for the hot queries: cards in a deck, and "due now" per user.
 create index if not exists cards_deck_id_idx     on public.cards (deck_id);
 create index if not exists cards_user_due_idx     on public.cards (user_id, due);
@@ -107,11 +122,13 @@ alter table public.decks       enable row level security;
 alter table public.cards       enable row level security;
 alter table public.review_logs enable row level security;
 alter table public.readings    enable row level security;
+alter table public.profiles    enable row level security;
 
 drop policy if exists "own decks"        on public.decks;
 drop policy if exists "own cards"        on public.cards;
 drop policy if exists "own review_logs"  on public.review_logs;
 drop policy if exists "own readings"     on public.readings;
+drop policy if exists "own profile"      on public.profiles;
 
 create policy "own decks" on public.decks
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
@@ -123,4 +140,7 @@ create policy "own review_logs" on public.review_logs
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 create policy "own readings" on public.readings
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+create policy "own profile" on public.profiles
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);

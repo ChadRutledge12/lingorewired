@@ -1,12 +1,13 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { Plus, Flame, Target, TrendingUp, BookOpen, Cloud } from 'lucide-react'
+import { Plus, Flame, TrendingUp, BookOpen, Cloud, Snowflake } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { humanInterval } from '@/lib/fsrs'
 import { computeStats } from '@/lib/stats'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { LogoLink } from '@/components/Logo'
+import DailyGoalTile from '@/components/DailyGoalTile'
 import DeleteDeckButton from './DeleteDeckButton'
 import NewEmptyDeckButton from './NewEmptyDeckButton'
 
@@ -40,11 +41,15 @@ export default async function DecksPage() {
   } = await supabase.auth.getUser()
   if (!user) redirect('/login?next=/decks')
 
-  const [{ data: decks }, { data: cards }, { data: reviewLogs }] = await Promise.all([
+  const [{ data: decks }, { data: cards }, { data: reviewLogs }, { data: profile }] = await Promise.all([
     supabase.from('decks').select('id, name, created_at').order('created_at', { ascending: false }),
     supabase.from('cards').select('deck_id, due, state'),
     supabase.from('review_logs').select('rating, review'),
+    supabase.from('profiles').select('daily_goal, streak_freezes, frozen_dates').maybeSingle(),
   ])
+  const dailyGoal = profile?.daily_goal ?? 20
+  const streakFreezes = profile?.streak_freezes ?? 1
+  const frozenDates = profile?.frozen_dates ?? []
 
   const now = new Date()
   const nowIso = now.toISOString()
@@ -56,7 +61,7 @@ export default async function DecksPage() {
     else if (!e.nextDue || c.due < e.nextDue) e.nextDue = c.due
   }
 
-  const stats = computeStats(reviewLogs || [], cards || [])
+  const stats = computeStats(reviewLogs || [], cards || [], frozenDates)
   const totalDue = Object.values(counts).reduce((sum, c) => sum + c.due, 0)
 
   return (
@@ -81,8 +86,15 @@ export default async function DecksPage() {
 
         {decks && decks.length > 0 && (
           <div className="mb-6 grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <StatTile icon={Flame} label="Day streak" value={stats.streak} chipClasses="bg-orange-50 text-orange-600" />
-            <StatTile icon={Target} label="Reviews today" value={stats.reviewsToday} chipClasses="bg-primary/10 text-primary" />
+            <div>
+              <StatTile icon={Flame} label="Day streak" value={stats.streak} chipClasses="bg-orange-50 text-orange-600" />
+              {streakFreezes > 0 && (
+                <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+                  <Snowflake className="size-3" /> {streakFreezes} freeze banked
+                </p>
+              )}
+            </div>
+            <DailyGoalTile reviewsToday={stats.reviewsToday} dailyGoal={dailyGoal} />
             <StatTile
               icon={TrendingUp}
               label="Retention"
