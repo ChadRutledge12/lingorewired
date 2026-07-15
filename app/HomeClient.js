@@ -747,7 +747,12 @@ export default function Home({ user, lastProfile, startNew = false }) {
                   {suggestions.length > 0 && (
                     <div className="mt-6 pt-6 border-t border-border text-left">
                       <p className="text-xs text-muted-foreground uppercase tracking-widest mb-3">Suggested next topics</p>
-                      <SuggestionsList suggestions={suggestions} onSelect={(topic) => addMoreWords(topic)} />
+                      <SuggestionsList suggestions={suggestions} onSelect={(topic) => addMoreWords(topic)} loading={loading} />
+                      {/* Feedback right where the tap happened — the topic
+                          grid can be scrolled far from the top-of-screen
+                          progress bar, so without this a click here looked
+                          like it did nothing while the ~10s call ran. */}
+                      {loading && <div className="mt-4"><GenerationProgress message="Generating more words…" /></div>}
                     </div>
                   )}
                 </div>
@@ -828,7 +833,8 @@ export default function Home({ user, lastProfile, startNew = false }) {
                 {suggestions.length > 0 && (
                   <div className="mt-6 pt-6 border-t border-border">
                     <p className="text-xs text-muted-foreground uppercase tracking-widest mb-3">Suggested next topics</p>
-                    <SuggestionsList suggestions={suggestions} onSelect={(topic) => addMoreWords(topic)} />
+                    <SuggestionsList suggestions={suggestions} onSelect={(topic) => addMoreWords(topic)} loading={loading} />
+                    {loading && <div className="mt-4"><GenerationProgress message="Generating more words…" /></div>}
                   </div>
                 )}
               </div>
