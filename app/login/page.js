@@ -3,7 +3,7 @@ import { Suspense, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Loader2, Eye, EyeOff, ArrowLeft } from 'lucide-react'
-import Logo from '@/components/Logo'
+import { LogoMark, RED as BRAND_RED } from '@/components/Logo'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -86,87 +86,97 @@ function LoginForm() {
   const submitLabel = mode === 'login' ? 'Log in' : mode === 'signup' ? 'Sign up' : 'Send reset link'
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted/40 p-4 sm:p-6">
-      <div className="bg-card text-card-foreground rounded-2xl shadow-sm ring-1 ring-foreground/10 p-6 sm:p-8 w-full max-w-sm">
-        <Link href="/" className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="size-3.5" /> Back to app
+    <div className="min-h-screen flex flex-col bg-[#0f1442]">
+      <div className="px-6 sm:px-10 py-6 flex flex-wrap items-center justify-between gap-y-2">
+        <div className="flex items-center gap-3" role="img" aria-label="LingoRewired">
+          <LogoMark className="size-12 sm:size-16" />
+          <span className="font-display text-3xl sm:text-4xl font-semibold tracking-tight leading-none" aria-hidden="true">
+            <span className="text-white">Lingo</span><span style={{ color: BRAND_RED }}>Rewired</span>
+          </span>
+        </div>
+        <Link href="/" className="shrink-0 inline-flex items-center gap-1 text-base text-white/60 hover:text-white">
+          <ArrowLeft className="size-4" /> Back to app
         </Link>
-        <Logo className="mb-5" />
-        <h1 className="text-2xl font-semibold mb-1 text-foreground">{title}</h1>
-        <p className="text-muted-foreground text-sm mb-6">{subtitle}</p>
+      </div>
 
-        {error && (
-          <Alert variant="destructive" className="mb-4">
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
-        {message && (
-          <Alert className="mb-4">
-            <AlertDescription>{message}</AlertDescription>
-          </Alert>
-        )}
+      <div className="flex flex-1 items-center justify-center px-6 py-12">
+        <div className="bg-card text-card-foreground rounded-2xl shadow-sm ring-1 ring-foreground/10 p-6 sm:p-8 w-full max-w-sm">
+          <h1 className="text-2xl font-semibold mb-1 text-foreground">{title}</h1>
+          <p className="text-muted-foreground text-sm mb-6">{subtitle}</p>
 
-        <form onSubmit={submit} className="space-y-3">
-          <Input
-            type="email"
-            placeholder="you@example.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            autoComplete="email"
-            autoFocus
-          />
-          {mode !== 'reset' && (
-            <div className="relative">
-              <Input
-                type={showPassword ? 'text' : 'password'}
-                placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                minLength={6}
-                autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-                className="pr-9"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword((s) => !s)}
-                aria-label={showPassword ? 'Hide password' : 'Show password'}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-                {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-              </button>
-            </div>
+          {error && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
           )}
-          {mode === 'login' && (
-            <div className="text-right">
-              <button type="button" onClick={() => switchMode('reset')} className="text-xs text-muted-foreground hover:text-foreground">
-                Forgot password?
-              </button>
-            </div>
+          {message && (
+            <Alert className="mb-4">
+              <AlertDescription>{message}</AlertDescription>
+            </Alert>
           )}
-          <Button type="submit" disabled={loading} className="w-full h-11 rounded-xl">
-            {loading && <Loader2 className="size-4 animate-spin" />}
-            {submitLabel}
-          </Button>
-        </form>
 
-        <p className="text-sm text-muted-foreground mt-6 text-center">
-          {mode === 'reset' ? (
-            <button type="button" onClick={() => switchMode('login')} className="font-medium text-primary hover:underline">
-              Back to log in
-            </button>
-          ) : (
-            <>
-              {mode === 'login' ? "Don't have an account?" : 'Already have an account?'}{' '}
-              <button
-                type="button"
-                onClick={() => switchMode(mode === 'login' ? 'signup' : 'login')}
-                className="font-medium text-primary hover:underline">
-                {mode === 'login' ? 'Sign up' : 'Log in'}
+          <form onSubmit={submit} className="space-y-3">
+            <Input
+              type="email"
+              placeholder="you@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              autoComplete="email"
+              autoFocus
+            />
+            {mode !== 'reset' && (
+              <div className="relative">
+                <Input
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  minLength={6}
+                  autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                  className="pr-9"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((s) => !s)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                  {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                </button>
+              </div>
+            )}
+            {mode === 'login' && (
+              <div className="text-right">
+                <button type="button" onClick={() => switchMode('reset')} className="text-xs text-muted-foreground hover:text-foreground">
+                  Forgot password?
+                </button>
+              </div>
+            )}
+            <Button type="submit" disabled={loading} className="w-full h-11 rounded-xl">
+              {loading && <Loader2 className="size-4 animate-spin" />}
+              {submitLabel}
+            </Button>
+          </form>
+
+          <p className="text-sm text-muted-foreground mt-6 text-center">
+            {mode === 'reset' ? (
+              <button type="button" onClick={() => switchMode('login')} className="font-medium text-primary hover:underline">
+                Back to log in
               </button>
-            </>
-          )}
-        </p>
+            ) : (
+              <>
+                {mode === 'login' ? "Don't have an account?" : 'Already have an account?'}{' '}
+                <button
+                  type="button"
+                  onClick={() => switchMode(mode === 'login' ? 'signup' : 'login')}
+                  className="font-medium text-primary hover:underline">
+                  {mode === 'login' ? 'Sign up' : 'Log in'}
+                </button>
+              </>
+            )}
+          </p>
+        </div>
       </div>
     </div>
   )

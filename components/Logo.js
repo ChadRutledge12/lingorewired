@@ -7,7 +7,7 @@ import Link from 'next/link'
 // just a graph. Neon-on-dark in the Spanish flag palette (red / gold /
 // white), self-contained dark badge so it looks the same on any background.
 
-const RED = '#E8382F'
+export const RED = '#E8382F'
 const GOLD = '#F6C31C'
 const WHITE = '#F4F1EA'
 
@@ -104,6 +104,19 @@ export function LogoMark({ className = 'size-10' }) {
         <g filter="url(#lr-neon)" opacity="0.9"><Network /></g>
         <Network />
       </g>
+    </svg>
+  )
+}
+
+// Plain brain silhouette (just the outline + central fissure, no neon
+// network/badge) — a small hand-drawn-feeling accent, e.g. standing in for
+// the dot on a headline "i". Colored via `currentColor`, so set text color
+// on the element or an ancestor.
+export function BrainOutline({ className = 'size-4' }) {
+  return (
+    <svg viewBox="0 0 64 64" className={className} fill="none" stroke="currentColor" aria-hidden="true">
+      <path d={BRAIN_OUTLINE} strokeWidth="3" strokeLinejoin="round" />
+      <path d={BRAIN_SULCUS} strokeWidth="2.4" strokeLinecap="round" />
     </svg>
   )
 }

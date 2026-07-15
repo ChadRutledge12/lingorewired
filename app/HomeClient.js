@@ -18,7 +18,7 @@ import SpeakButton from '@/components/SpeakButton'
 import VoicePicker from '@/components/VoicePicker'
 import VoiceDebugInfo from '@/components/VoiceDebugInfo'
 import SuggestionsList from '@/components/SuggestionsList'
-import Logo from '@/components/Logo'
+import { LogoMark, RED as BRAND_RED } from '@/components/Logo'
 import GenerationProgress from '@/components/GenerationProgress'
 import Calibration from '@/components/Calibration'
 import SurvivalGuidePicker from '@/components/SurvivalGuidePicker'
@@ -434,6 +434,77 @@ export default function Home({ user, lastProfile, startNew = false }) {
     return () => window.removeEventListener('keydown', handleKey)
   }, [step, viewMode, activeOrder.length])
 
+  // The welcome screen is a full-bleed landing page, not the compact card
+  // every other step uses — it's the one screen with no back button and
+  // nothing above it, so it gets room to breathe instead of floating in a
+  // small box. Picking a survival guide (from this same screen) drops into
+  // the compact-card picker below, so it's excluded here even though `step`
+  // itself stays 0 while that picker is open.
+  const isLanding = step === 0 && !survivalPicker
+
+  if (isLanding) {
+    return (
+      <div className="min-h-screen flex flex-col bg-[#0f1442]">
+        <div className="px-6 sm:px-10 py-6 flex flex-wrap items-center justify-between gap-y-2">
+          <div className="flex items-center gap-3" role="img" aria-label="LingoRewired">
+            <LogoMark className="size-12 sm:size-20" />
+            <span className="font-display text-3xl sm:text-5xl font-semibold tracking-tight leading-none" aria-hidden="true">
+              <span className="text-white">Lingo</span><span style={{ color: BRAND_RED }}>Rewired</span>
+            </span>
+          </div>
+          {user && (
+            <form action="/auth/signout" method="post" className="shrink-0">
+              <Button type="submit" variant="ghost" size="sm" className="text-white/60 hover:text-white hover:bg-white/10">
+                <LogOut className="size-3.5" /> Sign out
+              </Button>
+            </form>
+          )}
+        </div>
+
+        <div className="flex flex-1 flex-col items-center justify-center text-center px-6 py-16">
+          <div className="w-full max-w-3xl">
+            {user ? (
+              <>
+                <h1 className="font-display text-7xl sm:text-8xl font-medium mb-8 text-white">Welcome back</h1>
+                <p className="text-white/60 text-2xl mb-16">Jump back into your saved decks, or build a new vocabulary set.</p>
+                <Button asChild className="w-full h-20 rounded-xl text-2xl mb-4">
+                  <Link href="/decks">My profile →</Link>
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={startNewSet}
+                  className="w-full h-20 rounded-xl text-2xl mb-10 border-white/25 bg-white/5 text-white hover:bg-white/10 hover:text-white">
+                  Create a new set
+                </Button>
+                <button
+                  type="button"
+                  onClick={() => setSurvivalPicker(true)}
+                  className="w-full text-center text-2xl text-white/60 hover:text-white/90">
+                  Don&apos;t know where to start? Try a <span className="font-semibold" style={{ color: '#A5B4FC' }}>survival guide</span> →
+                </button>
+              </>
+            ) : (
+              <>
+                <h1 className="font-display text-7xl sm:text-8xl font-medium mb-8 text-white">Let&apos;s personalise your Spanish</h1>
+                <p className="text-white/60 text-2xl mb-16">Six quick questions so we can build a vocabulary set that matches your life.</p>
+                <Button asChild className="w-full h-20 rounded-xl text-2xl mb-4">
+                  <Link href="/login?next=/&mode=signup">Get started</Link>
+                </Button>
+                <p className="text-xl text-white/60 text-center">
+                  Already have an account?{' '}
+                  <Link href="/login?next=/" className="font-medium hover:underline" style={{ color: '#A5B4FC' }}>Log in</Link>
+                </p>
+                <p className="mt-10 text-center text-lg text-white/40">
+                  <Link href="/philosophy" className="hover:text-white/70">Why LingoRewired? →</Link>
+                </p>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted/40 p-4 sm:p-6">
       <div className={`bg-card text-card-foreground rounded-2xl shadow-sm ring-1 ring-foreground/10 p-6 sm:p-8 w-full transition-[max-width] ${step === 8 && viewMode === 'list' ? 'max-w-2xl' : 'max-w-md'}`}>
@@ -461,55 +532,6 @@ export default function Home({ user, lastProfile, startNew = false }) {
             {[1,2,3,4,5,6].map(i => (
               <div key={i} className={`h-1 flex-1 rounded-full transition-colors ${i < step ? 'bg-emerald-400' : i === step ? 'bg-primary' : 'bg-muted'}`} />
             ))}
-          </div>
-        )}
-
-        {/* Step 0 — Welcome */}
-        {step === 0 && (
-          <div>
-            <div className="mb-6 flex items-start justify-between gap-2">
-              <Logo />
-              {user && (
-                <form action="/auth/signout" method="post">
-                  <Button type="submit" variant="ghost" size="sm" className="text-muted-foreground -mr-2 -mt-1">
-                    <LogOut className="size-3.5" /> Sign out
-                  </Button>
-                </form>
-              )}
-            </div>
-            {user ? (
-              <>
-                <h1 className="text-2xl font-semibold mb-2 text-foreground">Welcome back</h1>
-                <p className="text-muted-foreground text-sm mb-8">Jump back into your saved decks, or build a new vocabulary set.</p>
-                <Button asChild className="w-full h-12 rounded-xl text-base mb-2">
-                  <Link href="/decks">Continue learning →</Link>
-                </Button>
-                <Button variant="outline" onClick={startNewSet} className="w-full h-12 rounded-xl text-base mb-2">
-                  Create a new set
-                </Button>
-                <button
-                  type="button"
-                  onClick={() => setSurvivalPicker(true)}
-                  className="w-full text-center text-sm text-muted-foreground hover:text-foreground">
-                  In a hurry? Try a survival guide →
-                </button>
-              </>
-            ) : (
-              <>
-                <h1 className="text-2xl font-semibold mb-2 text-foreground">Let&apos;s personalise your Spanish</h1>
-                <p className="text-muted-foreground text-sm mb-8">Six quick questions so we can build a vocabulary set that matches your life.</p>
-                <Button asChild className="w-full h-12 rounded-xl text-base mb-2">
-                  <Link href="/login?next=/&mode=signup">Get started</Link>
-                </Button>
-                <p className="text-sm text-muted-foreground text-center">
-                  Already have an account?{' '}
-                  <Link href="/login?next=/" className="font-medium text-primary hover:underline">Log in</Link>
-                </p>
-                <p className="mt-4 border-t border-border pt-4 text-center text-sm text-muted-foreground">
-                  <Link href="/philosophy" className="hover:text-foreground">Why LingoRewired? →</Link>
-                </p>
-              </>
-            )}
           </div>
         )}
 

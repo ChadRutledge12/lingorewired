@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import Logo from '@/components/Logo'
+import { LogoMark, RED as BRAND_RED } from '@/components/Logo'
 
 // Where the password-reset email link lands. Supabase's client
 // (detectSessionInUrl) turns the recovery token in the URL into a temporary
@@ -50,50 +50,60 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted/40 p-4 sm:p-6">
-      <div className="bg-card text-card-foreground rounded-2xl shadow-sm ring-1 ring-foreground/10 p-6 sm:p-8 w-full max-w-sm">
-        <Logo className="mb-5" />
-        <h1 className="text-2xl font-semibold mb-1 text-foreground">Set a new password</h1>
-        <p className="text-muted-foreground text-sm mb-6">Choose a new password for your account.</p>
+    <div className="min-h-screen flex flex-col bg-[#0f1442]">
+      <div className="px-6 sm:px-10 py-6 flex items-center">
+        <div className="flex items-center gap-3" role="img" aria-label="LingoRewired">
+          <LogoMark className="size-12 sm:size-16" />
+          <span className="font-display text-3xl sm:text-4xl font-semibold tracking-tight leading-none" aria-hidden="true">
+            <span className="text-white">Lingo</span><span style={{ color: BRAND_RED }}>Rewired</span>
+          </span>
+        </div>
+      </div>
 
-        {error && (
-          <Alert variant="destructive" className="mb-4">
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
+      <div className="flex flex-1 items-center justify-center px-6 py-12">
+        <div className="bg-card text-card-foreground rounded-2xl shadow-sm ring-1 ring-foreground/10 p-6 sm:p-8 w-full max-w-sm">
+          <h1 className="text-2xl font-semibold mb-1 text-foreground">Set a new password</h1>
+          <p className="text-muted-foreground text-sm mb-6">Choose a new password for your account.</p>
 
-        {!ready && !error ? (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
-            <Loader2 className="size-4 animate-spin" /> Verifying your reset link…
-          </div>
-        ) : (
-          <form onSubmit={submit} className="space-y-3">
-            <div className="relative">
-              <Input
-                type={showPassword ? 'text' : 'password'}
-                placeholder="New password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                minLength={6}
-                autoComplete="new-password"
-                autoFocus
-                className="pr-9"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword((s) => !s)}
-                aria-label={showPassword ? 'Hide password' : 'Show password'}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-                {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-              </button>
+          {error && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+
+          {!ready && !error ? (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
+              <Loader2 className="size-4 animate-spin" /> Verifying your reset link…
             </div>
-            <Button type="submit" disabled={saving || !ready} className="w-full h-11 rounded-xl">
-              {saving && <Loader2 className="size-4 animate-spin" />}
-              Update password
-            </Button>
-          </form>
-        )}
+          ) : (
+            <form onSubmit={submit} className="space-y-3">
+              <div className="relative">
+                <Input
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="New password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  minLength={6}
+                  autoComplete="new-password"
+                  autoFocus
+                  className="pr-9"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((s) => !s)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                  {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                </button>
+              </div>
+              <Button type="submit" disabled={saving || !ready} className="w-full h-11 rounded-xl">
+                {saving && <Loader2 className="size-4 animate-spin" />}
+                Update password
+              </Button>
+            </form>
+          )}
+        </div>
       </div>
     </div>
   )
