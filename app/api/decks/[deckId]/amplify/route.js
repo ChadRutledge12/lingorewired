@@ -42,7 +42,11 @@ export async function POST(request, { params }) {
   try {
     words = await callClaudeForWords(prompt)
   } catch (err) {
-    return Response.json({ error: err.message }, { status: err.status || 500 })
+    // Anthropic's own 401/403 must not be forwarded as-is — the client
+    // treats a 401 from this endpoint as "you're logged out" and redirects
+    // to /login, which is wrong when it's actually an upstream key/auth issue.
+    const status = err.status === 401 || err.status === 403 ? 502 : err.status || 500
+    return Response.json({ error: err.message }, { status })
   }
 
   // Belt-and-suspenders dedup against what's already in the deck, in case
