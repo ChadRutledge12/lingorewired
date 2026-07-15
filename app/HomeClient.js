@@ -21,7 +21,9 @@ import SuggestionsList from '@/components/SuggestionsList'
 import Logo from '@/components/Logo'
 import GenerationProgress from '@/components/GenerationProgress'
 import Calibration from '@/components/Calibration'
+import SurvivalGuidePicker from '@/components/SurvivalGuidePicker'
 import { useVoiceGender } from '@/lib/useVoiceGender'
+import { SURVIVAL_GUIDES } from '@/lib/survivalGuides'
 
 const LEVEL_OPTIONS = ['Complete beginner', 'A1 — I know a little', 'A2 — Basic phrases', 'B1 — Conversational', 'B2+ — Comfortable']
 const LANGUAGE_OPTIONS = ['English', 'French', 'Italian', 'Portuguese', 'German', 'Other']
@@ -132,11 +134,9 @@ export default function Home({ user, lastProfile, startNew = false }) {
   // existing words so it doesn't waste the set re-teaching them.
   const [calibrating, setCalibrating] = useState(false)
   const [knownWords, setKnownWords] = useState([])
-  // Fast path for a time-pressed learner (e.g. a trip in two weeks): skip
-  // goals/interests/contexts with sensible travel defaults, asking only for
-  // level + location — two taps instead of six. Calibration still runs
-  // (it's already skippable) so the level stays accurate.
-  const [fastPath, setFastPath] = useState(false)
+  // Premade "survival guide" decks (situation picker) for a time-pressed
+  // learner — instant, static A0–A1 word lists, no questionnaire or AI call.
+  const [survivalPicker, setSurvivalPicker] = useState(false)
   const [loading, setLoading] = useState(false)
   const [words, setWords] = useState([])
   const [suggestions, setSuggestions] = useState([])
@@ -181,7 +181,6 @@ export default function Home({ user, lastProfile, startNew = false }) {
   // Returning users skip the questionnaire: their last deck's profile is
   // preloaded and they land on the summary, where any field can be edited.
   const startNewSet = () => {
-    setFastPath(false)
     if (lastProfile) {
       // Dedupe the carried-over multi-select answers — older profiles can
       // hold duplicate custom entries from before the add paths deduped.
@@ -196,18 +195,23 @@ export default function Home({ user, lastProfile, startNew = false }) {
     }
   }
 
-  // Sensible defaults for a learner in a hurry — travel/essentials-flavored,
-  // editable later from the summary if they want to refine it.
-  const startFastPath = () => {
-    setAnswers({
-      ...EMPTY_ANSWERS,
-      nativeLanguage: 'English',
-      goals: ['Travel & get around'],
-      interests: ['Food & cooking'],
-      contexts: ['Restaurants & cafes', 'Hotels & travel', 'Shops & markets', 'Emergencies'],
-    })
-    setFastPath(true)
-    setStep(1)
+  // Instantly saves a premade survival-guide deck — no questionnaire, no
+  // calibration, no generation call. `answers` gets set to a minimal profile
+  // so the existing createDeck/defaultDeckNameFor/addMoreWords (amplify)
+  // plumbing all keep working exactly as they do for an AI-generated set.
+  const startSurvivalGuide = (guide) => {
+    const profile = { ...EMPTY_ANSWERS, level: 'Complete beginner', interests: [guide.title] }
+    setAnswers(profile)
+    setKnownWords([])
+    setSurvivalPicker(false)
+    setWords(guide.words)
+    setViewMode('flashcard')
+    setCardIndex(0)
+    setCardFlipped(false)
+    setSuggestions([])
+    setStep(8)
+    generateSuggestions(profile, guide.words)
+    createDeck(profile, guide.words)
   }
 
   // Step navigation that understands "I'm just editing one answer".
@@ -397,6 +401,13 @@ export default function Home({ user, lastProfile, startNew = false }) {
             onComplete={handleCalibrationComplete}
             onSkip={handleCalibrationSkip}
           />
+        ) : survivalPicker ? (
+          <SurvivalGuidePicker
+            guides={SURVIVAL_GUIDES}
+            loading={saving}
+            onSelect={startSurvivalGuide}
+            onBack={() => setSurvivalPicker(false)}
+          />
         ) : (
         <>
 
@@ -434,9 +445,9 @@ export default function Home({ user, lastProfile, startNew = false }) {
                 </Button>
                 <button
                   type="button"
-                  onClick={startFastPath}
+                  onClick={() => setSurvivalPicker(true)}
                   className="w-full text-center text-sm text-muted-foreground hover:text-foreground">
-                  In a hurry? Get travel essentials in 2 taps →
+                  In a hurry? Try a survival guide →
                 </button>
               </>
             ) : (
@@ -463,19 +474,11 @@ export default function Home({ user, lastProfile, startNew = false }) {
           <div>
             <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1">Step 1 of 6</p>
             <h2 className="text-xl font-semibold mb-1 text-foreground">What&apos;s your current level?</h2>
-            <p className={`text-muted-foreground text-sm ${fastPath ? 'mb-1' : 'mb-6'}`}>Be honest — we&apos;ll pitch the words at the right difficulty.</p>
-            {fastPath && (
-              <p className="text-xs text-primary mb-6">
-                Fast path: travel essentials, one more tap for location.{' '}
-                <button type="button" onClick={() => setFastPath(false)} className="underline hover:no-underline">
-                  Answer all 6 questions instead
-                </button>
-              </p>
-            )}
+            <p className="text-muted-foreground text-sm mb-6">Be honest — we&apos;ll pitch the words at the right difficulty.</p>
             <ChipGroup type="single" options={LEVEL_OPTIONS} value={answers.level} onChange={v => selectOne('level', v)} />
             <div className="flex justify-between mt-4">
               <Button variant="ghost" onClick={() => goBack(0)} className="text-muted-foreground">Back</Button>
-              <Button onClick={() => goNext(fastPath ? 6 : 2)} disabled={!answers.level} className="rounded-xl">{editReturn ? 'Done' : 'Continue'}</Button>
+              <Button onClick={() => goNext(2)} disabled={!answers.level} className="rounded-xl">{editReturn ? 'Done' : 'Continue'}</Button>
             </div>
           </div>
         )}
@@ -598,7 +601,7 @@ export default function Home({ user, lastProfile, startNew = false }) {
                     type="button"
                     onClick={() => editField(editStep)}
                     aria-label={`Edit ${label}`}
-                    className="group flex items-center gap-1.5 text-right min-w-0">
+                    className="group flex items-center gap-1.5 text-left min-w-0">
                     <span className="text-foreground font-medium">{value || '—'}</span>
                     <Pencil className="size-3 shrink-0 text-muted-foreground opacity-40 group-hover:opacity-100" />
                   </button>
@@ -654,7 +657,7 @@ export default function Home({ user, lastProfile, startNew = false }) {
             </div>
             <p className="text-muted-foreground text-sm mb-4">Personalised for you — start learning.</p>
             <div className="flex flex-col sm:flex-row gap-2 mb-4">
-              <Button variant="outline" onClick={() => { setFastPath(false); setStep(0) }} className="rounded-xl">
+              <Button variant="outline" onClick={() => setStep(0)} className="rounded-xl">
                 Start over
               </Button>
               <Button onClick={() => addMoreWords()} disabled={loading || !savedDeckId} className="rounded-xl">
@@ -712,8 +715,8 @@ export default function Home({ user, lastProfile, startNew = false }) {
             )}
 
             {/* Mode toggle + pronunciation dialect */}
-            <div className="flex items-center justify-between gap-2 mb-6">
-              <Tabs value={viewMode} onValueChange={setViewMode}>
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-6">
+              <Tabs value={viewMode} onValueChange={setViewMode} className="shrink-0">
                 <TabsList className="grid grid-cols-2 w-full sm:w-72">
                   <TabsTrigger value="flashcard">Flashcards</TabsTrigger>
                   <TabsTrigger value="list">List</TabsTrigger>
