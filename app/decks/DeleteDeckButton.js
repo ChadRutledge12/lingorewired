@@ -38,7 +38,7 @@ export default function DeleteDeckButton({ deckId, deckName }) {
           variant="ghost"
           size="icon"
           aria-label={`Delete ${deckName}`}
-          className="text-muted-foreground hover:text-destructive shrink-0">
+          className="text-muted-foreground hover:text-destructive dark:text-white/40 dark:hover:text-red-400 dark:hover:bg-white/10 shrink-0">
           <Trash2 className="size-4" />
         </Button>
       </AlertDialogTrigger>

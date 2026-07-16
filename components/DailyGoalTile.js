@@ -17,7 +17,9 @@ export default function DailyGoalTile({ reviewsToday, dailyGoal }) {
   const [saving, setSaving] = useState(false)
 
   const met = reviewsToday >= goal
-  const chipClasses = met ? 'bg-emerald-50 text-emerald-600' : 'bg-primary/10 text-primary'
+  const chipClasses = met
+    ? 'bg-emerald-50 text-emerald-600'
+    : 'bg-indigo-50 text-indigo-600'
 
   const save = async () => {
     const n = parseInt(draft, 10)
@@ -45,7 +47,7 @@ export default function DailyGoalTile({ reviewsToday, dailyGoal }) {
 
   if (editing) {
     return (
-      <div className="rounded-2xl bg-card ring-1 ring-foreground/10 p-4">
+      <div className="rounded-2xl bg-slate-100 ring-1 ring-slate-900/10 p-4">
         <div className={`mb-2 flex size-8 items-center justify-center rounded-full ${chipClasses}`}>
           <Target className="size-4" />
         </div>
@@ -57,9 +59,9 @@ export default function DailyGoalTile({ reviewsToday, dailyGoal }) {
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             autoFocus
-            className="rounded-lg h-8 w-16 px-2 text-sm"
+            className="rounded-lg h-8 w-16 px-2 text-sm bg-white border-slate-300 text-slate-900 placeholder:text-slate-400"
           />
-          <Button type="submit" size="icon-sm" variant="ghost" disabled={saving} aria-label="Save goal">
+          <Button type="submit" size="icon-sm" variant="ghost" disabled={saving} aria-label="Save goal" className="text-slate-500 hover:text-slate-900 hover:bg-slate-200">
             {saving ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
           </Button>
           <Button
@@ -69,11 +71,12 @@ export default function DailyGoalTile({ reviewsToday, dailyGoal }) {
             onClick={() => { setDraft(String(goal)); setEditing(false) }}
             disabled={saving}
             aria-label="Cancel"
+            className="text-slate-500 hover:text-slate-900 hover:bg-slate-200"
           >
             <X className="size-4" />
           </Button>
         </form>
-        <p className="mt-1 text-xs text-muted-foreground uppercase tracking-wide">Daily goal</p>
+        <p className="mt-1 text-xs text-slate-500 uppercase tracking-wide">Daily goal</p>
       </div>
     )
   }
@@ -82,13 +85,13 @@ export default function DailyGoalTile({ reviewsToday, dailyGoal }) {
     <button
       type="button"
       onClick={() => { setDraft(String(goal)); setEditing(true) }}
-      className="group rounded-2xl bg-card ring-1 ring-foreground/10 p-4 text-left w-full"
+      className="group rounded-2xl bg-slate-100 ring-1 ring-slate-900/10 p-4 text-left w-full"
     >
       <div className={`mb-2 flex size-8 items-center justify-center rounded-full ${chipClasses}`}>
         <Target className="size-4" />
       </div>
-      <p className="text-2xl font-semibold text-foreground">{reviewsToday}/{goal}</p>
-      <p className="text-xs text-muted-foreground uppercase tracking-wide">Daily goal</p>
+      <p className="text-2xl font-semibold text-slate-900">{reviewsToday}/{goal}</p>
+      <p className="text-xs text-slate-500 uppercase tracking-wide">Daily goal</p>
     </button>
   )
 }

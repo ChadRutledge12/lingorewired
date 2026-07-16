@@ -6,7 +6,7 @@ import { CALIBRATION_BANDS, estimateLevel } from '@/lib/calibrationWords'
 // Chip styling mirrors the onboarding ChipGroup look (HomeClient's chipClasses)
 // but as plain toggle buttons so this screen stays self-contained.
 const chipBase = 'h-auto rounded-full border px-4 py-2 text-sm font-medium transition'
-const chipOn = 'border-primary bg-primary/10 text-primary'
+const chipOn = 'border-primary bg-primary text-primary-foreground'
 const chipOff = 'border-border bg-transparent text-muted-foreground hover:bg-muted hover:text-foreground'
 
 function chipClass(selected) {

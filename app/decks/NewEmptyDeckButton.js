@@ -40,7 +40,7 @@ export default function NewEmptyDeckButton() {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button variant="outline" className="rounded-xl">
+        <Button variant="outline" className="rounded-xl dark:border-white/25 dark:bg-white/5 dark:text-white dark:hover:bg-white/10 dark:hover:text-white">
           <FolderPlus className="size-4" /> Empty deck
         </Button>
       </PopoverTrigger>

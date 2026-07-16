@@ -84,8 +84,8 @@ function DeckName({ deck }) {
       type="button"
       onClick={startRename}
       className="group flex items-center gap-1.5 text-left flex-1 min-w-0">
-      <h1 className="text-xl font-semibold text-foreground truncate">{savedName}</h1>
-      <Pencil className="size-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 shrink-0" />
+      <h1 className="text-xl font-semibold text-foreground dark:text-white truncate">{savedName}</h1>
+      <Pencil className="size-3.5 text-muted-foreground dark:text-white/40 opacity-0 group-hover:opacity-100 shrink-0" />
     </button>
   )
 }
@@ -124,19 +124,19 @@ function AddCardForm({ deckId, onAdded, onCancel }) {
   return (
     <form
       onSubmit={(e) => { e.preventDefault(); save() }}
-      className="border border-primary/30 rounded-xl p-4 space-y-2">
+      className="border border-primary/30 rounded-xl bg-white shadow-sm p-4 space-y-2">
       <div className="flex gap-2">
-        <Input autoFocus value={draft.word} onChange={(e) => setDraft((d) => ({ ...d, word: e.target.value }))} placeholder="Spanish word *" className="rounded-lg" />
+        <Input autoFocus value={draft.word} onChange={(e) => setDraft((d) => ({ ...d, word: e.target.value }))} placeholder="Spanish word *" className="rounded-lg bg-white border-slate-300 text-slate-900 placeholder:text-slate-400" />
         <Select value={draft.part_of_speech} onValueChange={(v) => setDraft((d) => ({ ...d, part_of_speech: v }))}>
-          <SelectTrigger size="sm" className="w-32 rounded-lg"><SelectValue /></SelectTrigger>
+          <SelectTrigger size="sm" className="w-32 rounded-lg bg-white border-slate-300 text-slate-900"><SelectValue /></SelectTrigger>
           <SelectContent>
             {POS_OPTIONS.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
           </SelectContent>
         </Select>
       </div>
-      <Input value={draft.translation} onChange={(e) => setDraft((d) => ({ ...d, translation: e.target.value }))} placeholder="Translation" className="rounded-lg" />
-      <Input value={draft.example} onChange={(e) => setDraft((d) => ({ ...d, example: e.target.value }))} placeholder="Example sentence (optional)" className="rounded-lg" />
-      <Input value={draft.example_translation} onChange={(e) => setDraft((d) => ({ ...d, example_translation: e.target.value }))} placeholder="Example translation (optional)" className="rounded-lg" />
+      <Input value={draft.translation} onChange={(e) => setDraft((d) => ({ ...d, translation: e.target.value }))} placeholder="Translation" className="rounded-lg bg-white border-slate-300 text-slate-900 placeholder:text-slate-400" />
+      <Input value={draft.example} onChange={(e) => setDraft((d) => ({ ...d, example: e.target.value }))} placeholder="Example sentence (optional)" className="rounded-lg bg-white border-slate-300 text-slate-900 placeholder:text-slate-400" />
+      <Input value={draft.example_translation} onChange={(e) => setDraft((d) => ({ ...d, example_translation: e.target.value }))} placeholder="Example translation (optional)" className="rounded-lg bg-white border-slate-300 text-slate-900 placeholder:text-slate-400" />
       {error && <p className="text-sm text-red-500">{error}</p>}
       <div className="flex gap-2 pt-1">
         <Button type="submit" size="sm" disabled={saving} className="rounded-lg">
@@ -195,19 +195,19 @@ function CardRow({ card, onSaved, onDeleted, onExplore }) {
 
   if (editing) {
     return (
-      <div className="border border-primary/30 rounded-xl p-4 space-y-2">
+      <div className="border border-primary/30 rounded-xl bg-white shadow-sm p-4 space-y-2">
         <div className="flex gap-2">
-          <Input value={draft.word} onChange={(e) => setDraft((d) => ({ ...d, word: e.target.value }))} placeholder="Word" className="rounded-lg" />
+          <Input value={draft.word} onChange={(e) => setDraft((d) => ({ ...d, word: e.target.value }))} placeholder="Word" className="rounded-lg bg-white border-slate-300 text-slate-900 placeholder:text-slate-400" />
           <Select value={draft.part_of_speech} onValueChange={(v) => setDraft((d) => ({ ...d, part_of_speech: v }))}>
-            <SelectTrigger size="sm" className="w-32 rounded-lg"><SelectValue /></SelectTrigger>
+            <SelectTrigger size="sm" className="w-32 rounded-lg bg-white border-slate-300 text-slate-900"><SelectValue /></SelectTrigger>
             <SelectContent>
               {POS_OPTIONS.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
-        <Input value={draft.translation} onChange={(e) => setDraft((d) => ({ ...d, translation: e.target.value }))} placeholder="Translation" className="rounded-lg" />
-        <Input value={draft.example} onChange={(e) => setDraft((d) => ({ ...d, example: e.target.value }))} placeholder="Example sentence" className="rounded-lg" />
-        <Input value={draft.example_translation} onChange={(e) => setDraft((d) => ({ ...d, example_translation: e.target.value }))} placeholder="Example translation" className="rounded-lg" />
+        <Input value={draft.translation} onChange={(e) => setDraft((d) => ({ ...d, translation: e.target.value }))} placeholder="Translation" className="rounded-lg bg-white border-slate-300 text-slate-900 placeholder:text-slate-400" />
+        <Input value={draft.example} onChange={(e) => setDraft((d) => ({ ...d, example: e.target.value }))} placeholder="Example sentence" className="rounded-lg bg-white border-slate-300 text-slate-900 placeholder:text-slate-400" />
+        <Input value={draft.example_translation} onChange={(e) => setDraft((d) => ({ ...d, example_translation: e.target.value }))} placeholder="Example translation" className="rounded-lg bg-white border-slate-300 text-slate-900 placeholder:text-slate-400" />
         {error && <p className="text-sm text-red-500">{error}</p>}
         <div className="flex gap-2 pt-1">
           <Button size="sm" onClick={save} disabled={saving} className="rounded-lg">
@@ -224,17 +224,17 @@ function CardRow({ card, onSaved, onDeleted, onExplore }) {
   const mastery = masteryOf(card)
 
   return (
-    <div className="border border-border rounded-xl p-4">
+    <div className="rounded-xl border border-slate-200 bg-white shadow-sm p-4">
       <div className="flex justify-between items-start mb-1">
         <div className="flex items-baseline gap-2 min-w-0">
           <button
             type="button"
             onClick={() => onExplore(card)}
-            className="text-lg font-semibold text-foreground hover:text-primary hover:underline decoration-dotted underline-offset-4 truncate"
+            className="text-lg font-semibold text-slate-900 hover:text-primary hover:underline decoration-dotted underline-offset-4 truncate"
             title="See related words">
             {card.word}
           </button>
-          <span className="text-[11px] text-muted-foreground italic shrink-0">{card.part_of_speech}</span>
+          <span className="text-[11px] text-slate-500 italic shrink-0">{card.part_of_speech}</span>
         </div>
         <div className="flex items-center gap-1 shrink-0">
           <span
@@ -244,15 +244,15 @@ function CardRow({ card, onSaved, onDeleted, onExplore }) {
             {mastery.label}
           </span>
           {card.tier && <Badge variant="outline" className={tierInfo(card.tier).badgeClass}>{tierInfo(card.tier).label}</Badge>}
-          <Button size="icon-sm" variant="ghost" onClick={() => onExplore(card)} aria-label={`See words related to ${card.word}`} className="text-muted-foreground">
+          <Button size="icon-sm" variant="ghost" onClick={() => onExplore(card)} aria-label={`See words related to ${card.word}`} className="text-slate-500 hover:text-slate-900 hover:bg-slate-100">
             <Share2 className="size-3.5" />
           </Button>
-          <Button size="icon-sm" variant="ghost" onClick={startEdit} aria-label={`Edit ${card.word}`} className="text-muted-foreground">
+          <Button size="icon-sm" variant="ghost" onClick={startEdit} aria-label={`Edit ${card.word}`} className="text-slate-500 hover:text-slate-900 hover:bg-slate-100">
             <Pencil className="size-3.5" />
           </Button>
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button size="icon-sm" variant="ghost" aria-label={`Delete ${card.word}`} className="text-muted-foreground hover:text-destructive">
+              <Button size="icon-sm" variant="ghost" aria-label={`Delete ${card.word}`} className="text-slate-500 hover:text-destructive hover:bg-slate-100">
                 <Trash2 className="size-3.5" />
               </Button>
             </AlertDialogTrigger>
@@ -271,9 +271,9 @@ function CardRow({ card, onSaved, onDeleted, onExplore }) {
           </AlertDialog>
         </div>
       </div>
-      <div className="text-sm text-muted-foreground mb-2">{card.translation}</div>
-      <div className="text-sm text-foreground/80 border-l-2 border-border pl-3 italic mb-1">{card.example}</div>
-      <div className="text-sm text-muted-foreground border-l-2 border-border pl-3 italic">{card.example_translation}</div>
+      <div className="text-sm text-slate-500 mb-2">{card.translation}</div>
+      <div className="text-sm text-slate-700 border-l-2 border-slate-200 pl-3 italic mb-1">{card.example}</div>
+      <div className="text-sm text-slate-500 border-l-2 border-slate-200 pl-3 italic">{card.example_translation}</div>
     </div>
   )
 }
@@ -492,10 +492,10 @@ export default function DeckDetailClient({ deck, initialCards, dueCount, initial
   }
 
   return (
-    <div className="min-h-screen bg-muted/40 p-4 sm:p-6">
+    <div className="min-h-screen bg-muted/40 dark:bg-[#0f1442] p-4 sm:p-6">
       <div className="mx-auto w-full max-w-2xl">
         <LogoLink className="mb-4" />
-        <Link href="/decks" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4">
+        <Link href="/decks" className="inline-flex items-center gap-1 text-sm text-muted-foreground dark:text-white/60 hover:text-foreground dark:hover:text-white mb-4">
           <ArrowLeft className="size-3.5" /> Back to decks
         </Link>
 
@@ -709,9 +709,9 @@ export default function DeckDetailClient({ deck, initialCards, dueCount, initial
         )}
 
         {cards.length === 0 && !addingCard ? (
-          <div className="rounded-2xl bg-card ring-1 ring-foreground/10 p-8 text-center">
-            <p className="text-foreground font-medium mb-1">This deck is empty</p>
-            <p className="text-sm text-muted-foreground mb-4">Add your own vocabulary, or start from AI suggestions based on the title.</p>
+          <div className="rounded-2xl bg-white ring-1 ring-slate-200 shadow-sm p-8 text-center">
+            <p className="text-slate-900 font-medium mb-1">This deck is empty</p>
+            <p className="text-sm text-slate-500 mb-4">Add your own vocabulary, or start from AI suggestions based on the title.</p>
             <Button onClick={() => setAddingCard(true)} className="rounded-xl">
               <Plus className="size-4" /> Add your first card
             </Button>

@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Loader2, X, PartyPopper, Download, LogOut, Pencil, Plus } from 'lucide-react'
+import { Loader2, X, PartyPopper, Download, LogOut, Pencil, Plus, Lightbulb } from 'lucide-react'
 import { exportDeckPdf } from '@/lib/exportPdf'
 import { tierInfo } from '@/lib/tier'
 import { Button } from '@/components/ui/button'
@@ -19,6 +19,7 @@ import VoicePicker from '@/components/VoicePicker'
 import VoiceDebugInfo from '@/components/VoiceDebugInfo'
 import SuggestionsList from '@/components/SuggestionsList'
 import { LogoMark, RED as BRAND_RED } from '@/components/Logo'
+import ThemeToggle from '@/components/ThemeToggle'
 import GenerationProgress from '@/components/GenerationProgress'
 import Calibration from '@/components/Calibration'
 import SurvivalGuidePicker from '@/components/SurvivalGuidePicker'
@@ -33,7 +34,7 @@ const CONTEXT_OPTIONS = ['Restaurants & cafes', 'Meetings & offices', 'Outdoors 
 const LOCATION_OPTIONS = ['Spain', 'Mexico', 'Argentina', 'Colombia', 'Latin America (general)', 'Not sure yet']
 
 
-const chipClasses = 'h-auto rounded-full border px-4 py-2 text-sm font-medium transition data-[state=off]:border-border data-[state=off]:bg-transparent data-[state=off]:text-muted-foreground data-[state=off]:hover:bg-muted data-[state=off]:hover:text-foreground data-[state=on]:border-primary data-[state=on]:bg-primary/10 data-[state=on]:text-primary'
+const chipClasses = 'h-auto rounded-full border px-4 py-2 text-sm font-medium transition data-[state=off]:border-border data-[state=off]:bg-transparent data-[state=off]:text-muted-foreground data-[state=off]:hover:bg-muted data-[state=off]:hover:text-foreground data-[state=on]:border-primary data-[state=on]:bg-primary data-[state=on]:text-primary-foreground'
 
 function ChipGroup({ type, options, value, onChange }) {
   return (
@@ -140,6 +141,7 @@ export default function Home({ user, lastProfile, startNew = false }) {
   const [loading, setLoading] = useState(false)
   const [words, setWords] = useState([])
   const [suggestions, setSuggestions] = useState([])
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false)
   const [error, setError] = useState('')
   const [viewMode, setViewMode] = useState('flashcard')
   const [cardIndex, setCardIndex] = useState(0)
@@ -212,7 +214,7 @@ export default function Home({ user, lastProfile, startNew = false }) {
     setKnownWords([])
     setSurvivalPicker(false)
     setWords(guide.words)
-    setViewMode('flashcard')
+    setViewMode('list')
     setCardIndex(0)
     setCardFlipped(false)
     setCardRatings({})
@@ -308,6 +310,7 @@ export default function Home({ user, lastProfile, startNew = false }) {
   }
 
   const generateSuggestions = async (profile, generatedWords) => {
+    setSuggestionsLoading(true)
     try {
       const response = await fetch('/api/suggest-topics', {
         method: 'POST',
@@ -322,6 +325,8 @@ export default function Home({ user, lastProfile, startNew = false }) {
       setSuggestions(data.suggestions)
     } catch (error) {
       console.error('Suggestions error:', error)
+    } finally {
+      setSuggestionsLoading(false)
     }
   }
 
@@ -444,58 +449,61 @@ export default function Home({ user, lastProfile, startNew = false }) {
 
   if (isLanding) {
     return (
-      <div className="min-h-screen flex flex-col bg-[#0f1442]">
+      <div className="min-h-screen flex flex-col bg-white dark:bg-[#0f1442]">
         <div className="px-6 sm:px-10 py-6 flex flex-wrap items-center justify-between gap-y-2">
           <div className="flex items-center gap-3" role="img" aria-label="LingoRewired">
-            <LogoMark className="size-12 sm:size-20" />
-            <span className="font-display text-3xl sm:text-5xl font-semibold tracking-tight leading-none" aria-hidden="true">
-              <span className="text-white">Lingo</span><span style={{ color: BRAND_RED }}>Rewired</span>
+            <LogoMark className="size-10 sm:size-14" />
+            <span className="font-display text-xl sm:text-3xl font-semibold tracking-tight leading-none" aria-hidden="true">
+              <span className="text-foreground dark:text-white">Lingo</span><span style={{ color: BRAND_RED }}>Rewired</span>
             </span>
           </div>
-          {user && (
-            <form action="/auth/signout" method="post" className="shrink-0">
-              <Button type="submit" variant="ghost" size="sm" className="text-white/60 hover:text-white hover:bg-white/10">
-                <LogOut className="size-3.5" /> Sign out
-              </Button>
-            </form>
-          )}
+          <div className="flex items-center gap-1 shrink-0">
+            <ThemeToggle />
+            {user && (
+              <form action="/auth/signout" method="post">
+                <Button type="submit" variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground dark:text-white/60 dark:hover:text-white dark:hover:bg-white/10">
+                  <LogOut className="size-3.5" /> Sign out
+                </Button>
+              </form>
+            )}
+          </div>
         </div>
 
         <div className="flex flex-1 flex-col items-center justify-center text-center px-6 py-16">
-          <div className="w-full max-w-3xl">
+          <div className="w-full max-w-xl">
             {user ? (
               <>
-                <h1 className="font-display text-7xl sm:text-8xl font-medium mb-8 text-white">Welcome back</h1>
-                <p className="text-white/60 text-2xl mb-16">Jump back into your saved decks, or build a new vocabulary set.</p>
-                <Button asChild className="w-full h-20 rounded-xl text-2xl mb-4">
+                <h1 className="font-display text-5xl sm:text-6xl font-medium mb-5 text-foreground dark:text-white">Welcome back</h1>
+                <p className="text-muted-foreground dark:text-white/60 text-lg mb-10">Jump back into your saved decks, or build a new vocabulary set.</p>
+                <Button asChild className="w-full h-14 rounded-xl text-lg mb-3">
                   <Link href="/decks">My profile →</Link>
                 </Button>
                 <Button
                   variant="outline"
                   onClick={startNewSet}
-                  className="w-full h-20 rounded-xl text-2xl mb-10 border-white/25 bg-white/5 text-white hover:bg-white/10 hover:text-white">
+                  className="w-full h-14 rounded-xl text-lg mb-7 dark:border-white/25 dark:bg-white/5 dark:text-white dark:hover:bg-white/10 dark:hover:text-white">
                   Create a new set
                 </Button>
                 <button
                   type="button"
                   onClick={() => setSurvivalPicker(true)}
-                  className="w-full text-center text-2xl text-white/60 hover:text-white/90">
-                  Don&apos;t know where to start? Try a <span className="font-semibold" style={{ color: '#A5B4FC' }}>survival guide</span> →
+                  className="w-full text-center text-lg text-muted-foreground hover:text-foreground dark:text-white/60 dark:hover:text-white/90">
+                  Don&apos;t know where to start? Try a <span className="font-semibold text-primary dark:text-[#A5B4FC]">survival guide</span> →
                 </button>
               </>
             ) : (
               <>
-                <h1 className="font-display text-7xl sm:text-8xl font-medium mb-8 text-white">Let&apos;s personalise your Spanish</h1>
-                <p className="text-white/60 text-2xl mb-16">Six quick questions so we can build a vocabulary set that matches your life.</p>
-                <Button asChild className="w-full h-20 rounded-xl text-2xl mb-4">
+                <h1 className="font-display text-5xl sm:text-6xl font-medium mb-5 text-foreground dark:text-white">Let&apos;s personalise your Spanish</h1>
+                <p className="text-muted-foreground dark:text-white/60 text-lg mb-10">Six quick questions so we can build a vocabulary set that matches your life.</p>
+                <Button asChild className="w-full h-14 rounded-xl text-lg mb-3">
                   <Link href="/login?next=/&mode=signup">Get started</Link>
                 </Button>
-                <p className="text-xl text-white/60 text-center">
+                <p className="text-base text-muted-foreground dark:text-white/60 text-center">
                   Already have an account?{' '}
-                  <Link href="/login?next=/" className="font-medium hover:underline" style={{ color: '#A5B4FC' }}>Log in</Link>
+                  <Link href="/login?next=/" className="font-medium text-primary hover:underline dark:text-[#A5B4FC]">Log in</Link>
                 </p>
-                <p className="mt-10 text-center text-lg text-white/40">
-                  <Link href="/philosophy" className="hover:text-white/70">Why LingoRewired? →</Link>
+                <p className="mt-7 text-center text-sm text-muted-foreground/70 dark:text-white/40">
+                  <Link href="/philosophy" className="hover:text-foreground dark:hover:text-white/70">Why LingoRewired? →</Link>
                 </p>
               </>
             )}
@@ -506,8 +514,8 @@ export default function Home({ user, lastProfile, startNew = false }) {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted/40 p-4 sm:p-6">
-      <div className={`bg-card text-card-foreground rounded-2xl shadow-sm ring-1 ring-foreground/10 p-6 sm:p-8 w-full transition-[max-width] ${step === 8 && viewMode === 'list' ? 'max-w-2xl' : 'max-w-md'}`}>
+    <div className={`min-h-screen flex items-center justify-center bg-muted/40 p-4 sm:p-6 ${step === 8 ? 'dark:bg-[#0f1442]' : ''}`}>
+      <div className={`rounded-2xl p-6 sm:p-8 w-full transition-[max-width] ${step === 8 ? 'bg-card text-card-foreground shadow-sm ring-1 ring-foreground/10 dark:bg-transparent dark:text-white dark:shadow-none dark:ring-0 dark:rounded-none dark:p-0' : 'bg-card text-card-foreground shadow-sm ring-1 ring-foreground/10'} ${step === 8 && viewMode === 'list' ? 'max-w-2xl' : 'max-w-md'}`}>
 
         {calibrating ? (
           <Calibration
@@ -718,12 +726,12 @@ export default function Home({ user, lastProfile, startNew = false }) {
         {step === 8 && (
           <div>
             <div className="flex items-center justify-between mb-1">
-              <h2 className="text-xl font-semibold text-foreground">Your vocabulary set</h2>
-              <Link href="/decks" className="text-sm font-medium text-primary hover:underline shrink-0">My decks →</Link>
+              <h2 className="text-xl font-semibold text-foreground dark:text-white">Your vocabulary set</h2>
+              <Link href="/decks" className="text-sm font-medium text-primary dark:text-[#A5B4FC] hover:underline shrink-0">My decks →</Link>
             </div>
-            <p className="text-muted-foreground text-sm mb-4">Personalised for you — start learning.</p>
+            <p className="text-muted-foreground dark:text-white/60 text-sm mb-4">Personalised for you — start learning.</p>
             <div className="flex flex-col sm:flex-row gap-2 mb-4">
-              <Button variant="outline" onClick={() => setStep(0)} className="rounded-xl">
+              <Button variant="outline" onClick={() => setStep(0)} className="rounded-xl dark:border-white/25 dark:bg-white/5 dark:text-white dark:hover:bg-white/10 dark:hover:text-white">
                 Start over
               </Button>
               <Button onClick={() => addMoreWords()} disabled={loading || !savedDeckId} className="rounded-xl">
@@ -733,7 +741,7 @@ export default function Home({ user, lastProfile, startNew = false }) {
               <Button
                 variant="outline"
                 onClick={() => exportDeckPdf(defaultDeckName(), words)}
-                className="rounded-xl sm:w-auto">
+                className="rounded-xl sm:w-auto dark:border-white/25 dark:bg-white/5 dark:text-white dark:hover:bg-white/10 dark:hover:text-white">
                 <Download className="size-4" /> PDF
               </Button>
             </div>
@@ -751,31 +759,31 @@ export default function Home({ user, lastProfile, startNew = false }) {
                 other deck feature are available right away. */}
             <div className="mb-4">
               {savedDeckId ? (
-                <Alert>
-                  <AlertDescription className="flex items-center justify-between gap-2">
+                <Alert className="dark:bg-transparent dark:border dark:border-white/15">
+                  <AlertDescription className="flex items-center justify-between gap-2 dark:text-white/70">
                     <span>Saved to your decks.</span>
-                    <Link href={`/review/${savedDeckId}`} className="font-medium text-primary hover:underline shrink-0">Review now →</Link>
+                    <Link href={`/review/${savedDeckId}`} className="font-medium text-primary dark:text-[#A5B4FC] hover:underline shrink-0">Review now →</Link>
                   </AlertDescription>
                 </Alert>
               ) : saveError ? (
-                <Alert variant="destructive">
+                <Alert variant="destructive" className="dark:bg-transparent dark:border dark:border-red-400/30">
                   <AlertDescription className="flex items-center justify-between gap-2">
                     <span>{saveError}</span>
-                    <Button size="sm" variant="outline" disabled={saving} onClick={() => createDeck(answers, words)} className="shrink-0 rounded-xl">
+                    <Button size="sm" variant="outline" disabled={saving} onClick={() => createDeck(answers, words)} className="shrink-0 rounded-xl dark:border-white/25 dark:bg-white/5 dark:text-white dark:hover:bg-white/10 dark:hover:text-white">
                       {saving && <Loader2 className="size-4 animate-spin" />}
                       Retry
                     </Button>
                   </AlertDescription>
                 </Alert>
               ) : (
-                <p className="text-sm text-muted-foreground flex items-center gap-1.5">
+                <p className="text-sm text-muted-foreground dark:text-white/60 flex items-center gap-1.5">
                   <Loader2 className="size-3.5 animate-spin" /> Saving to your decks…
                 </p>
               )}
             </div>
 
             {error && (
-              <Alert variant="destructive" className="mb-4">
+              <Alert variant="destructive" className="mb-4 dark:bg-transparent dark:border dark:border-red-400/30">
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
@@ -783,9 +791,9 @@ export default function Home({ user, lastProfile, startNew = false }) {
             {/* Mode toggle + pronunciation dialect */}
             <div className="flex flex-wrap items-center justify-between gap-2 mb-6">
               <Tabs value={viewMode} onValueChange={setViewMode} className="shrink-0">
-                <TabsList className="grid grid-cols-2 w-full sm:w-72">
-                  <TabsTrigger value="flashcard">Flashcards</TabsTrigger>
-                  <TabsTrigger value="list">List</TabsTrigger>
+                <TabsList className="grid grid-cols-2 w-full sm:w-72 dark:bg-white/10">
+                  <TabsTrigger value="flashcard" className="dark:text-white/70 dark:hover:text-white dark:data-active:bg-white/20 dark:data-active:text-white">Flashcards</TabsTrigger>
+                  <TabsTrigger value="list" className="dark:text-white/70 dark:hover:text-white dark:data-active:bg-white/20 dark:data-active:text-white">List</TabsTrigger>
                 </TabsList>
               </Tabs>
               <div className="flex items-center gap-1">
@@ -799,16 +807,16 @@ export default function Home({ user, lastProfile, startNew = false }) {
               <div className="mx-auto max-w-md">
                 {cardIndex >= activeOrder.length ? (
                 <div className="text-center py-4">
-                  <PartyPopper className="mx-auto mb-2 size-10 text-primary" />
-                  <h3 className="text-lg font-semibold text-foreground mb-1">Batch complete!</h3>
-                  <p className="text-muted-foreground text-sm mb-6">You reviewed all {activeOrder.length} words.</p>
+                  <PartyPopper className="mx-auto mb-2 size-10 text-primary dark:text-[#A5B4FC]" />
+                  <h3 className="text-lg font-semibold text-foreground dark:text-white mb-1">Batch complete!</h3>
+                  <p className="text-muted-foreground dark:text-white/60 text-sm mb-6">You reviewed all {activeOrder.length} words.</p>
                   <div className="flex flex-col sm:flex-row gap-2 mb-2">
                     {weakIndices.length > 0 ? (
-                      <Button variant="outline" onClick={reviewAgain} className="flex-1 rounded-xl">
+                      <Button variant="outline" onClick={reviewAgain} className="flex-1 rounded-xl dark:border-white/25 dark:bg-white/5 dark:text-white dark:hover:bg-white/10 dark:hover:text-white">
                         Review again — hardest first
                       </Button>
                     ) : (
-                      <p className="flex-1 flex items-center justify-center text-sm text-muted-foreground border border-dashed border-border rounded-xl px-4 py-2">
+                      <p className="flex-1 flex items-center justify-center text-sm text-muted-foreground dark:text-white/60 border border-dashed border-border dark:border-white/20 rounded-xl px-4 py-2">
                         You know every word here 🎉
                       </p>
                     )}
@@ -816,17 +824,38 @@ export default function Home({ user, lastProfile, startNew = false }) {
                       View as list
                     </Button>
                   </div>
-                  {suggestions.length > 0 && (
-                    <div className="mt-6 pt-6 border-t border-border text-left">
-                      <p className="text-xs text-muted-foreground uppercase tracking-widest mb-3">Suggested next topics</p>
-                      <SuggestionsList suggestions={suggestions} onSelect={(topic) => addMoreWords(topic)} loading={loading} />
-                      {/* Feedback right where the tap happened — the topic
-                          grid can be scrolled far from the top-of-screen
-                          progress bar, so without this a click here looked
-                          like it did nothing while the ~10s call ran. */}
-                      {loading && <div className="mt-4"><GenerationProgress message="Generating more words…" /></div>}
-                    </div>
-                  )}
+                  <div className="mt-6 pt-6 border-t border-border dark:border-white/10 text-left">
+                    <p className="text-xs text-muted-foreground dark:text-white/50 uppercase tracking-widest mb-3">Suggested next topics</p>
+                    {suggestions.length > 0 ? (
+                      <>
+                        <SuggestionsList suggestions={suggestions} onSelect={(topic) => addMoreWords(topic)} loading={loading} />
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => generateSuggestions(answers, words)}
+                          disabled={suggestionsLoading}
+                          className="mt-3 text-muted-foreground dark:text-white/60 hover:text-foreground dark:hover:text-white dark:hover:bg-white/10">
+                          {suggestionsLoading ? <Loader2 className="size-3.5 animate-spin" /> : <Lightbulb className="size-3.5" />}
+                          {suggestionsLoading ? 'Thinking of topics...' : 'Suggest more topics'}
+                        </Button>
+                      </>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => generateSuggestions(answers, words)}
+                        disabled={suggestionsLoading}
+                        className="rounded-xl dark:border-white/25 dark:bg-white/5 dark:text-white dark:hover:bg-white/10 dark:hover:text-white">
+                        {suggestionsLoading ? <Loader2 className="size-3.5 animate-spin" /> : <Lightbulb className="size-3.5" />}
+                        {suggestionsLoading ? 'Thinking of topics...' : 'Suggest topics'}
+                      </Button>
+                    )}
+                    {/* Feedback right where the tap happened — the topic
+                        grid can be scrolled far from the top-of-screen
+                        progress bar, so without this a click here looked
+                        like it did nothing while the ~10s call ran. */}
+                    {loading && <div className="mt-4"><GenerationProgress message="Generating more words…" /></div>}
+                  </div>
                 </div>
               ) : (
                 <div>
@@ -835,32 +864,32 @@ export default function Home({ user, lastProfile, startNew = false }) {
                       <div
                         onClick={() => setCardFlipped(f => !f)}
                         className={`flashcard relative w-full h-full cursor-pointer ${cardFlipped ? 'is-flipped' : ''}`}>
-                        <div className="flashcard-face absolute inset-0 rounded-2xl border border-border bg-card shadow-sm p-6 flex flex-col items-center justify-center text-center">
+                        <div className="flashcard-face absolute inset-0 rounded-2xl border border-slate-200 bg-white shadow-md p-6 flex flex-col items-center justify-center text-center">
                           <Badge variant="outline" className={`mb-4 ${tierInfo(currentCard.tier).badgeClass}`}>
                             {tierInfo(currentCard.tier).label}
                           </Badge>
                           <div className="flex items-center gap-1 mb-2">
-                            <span className="text-2xl font-semibold text-foreground">{currentCard.word}</span>
+                            <span className="text-2xl font-semibold text-slate-900">{currentCard.word}</span>
                             <SpeakButton text={currentCard.word} gender={voiceGender} />
                           </div>
-                          <span className="text-sm text-muted-foreground italic">{currentCard.part_of_speech}</span>
-                          <span className="text-xs text-muted-foreground/70 mt-6">Tap to reveal</span>
+                          <span className="text-sm text-slate-500 italic">{currentCard.part_of_speech}</span>
+                          <span className="text-xs text-slate-400 mt-6">Tap to reveal</span>
                         </div>
-                        <div className="flashcard-face flashcard-face-back absolute inset-0 rounded-2xl border border-primary/20 bg-primary/5 p-6 flex flex-col items-center justify-center text-center">
-                          <span className="text-xl font-semibold text-foreground mb-1">{currentCard.translation}</span>
-                          <span className="text-xs text-muted-foreground italic mb-4">{currentCard.part_of_speech}</span>
+                        <div className="flashcard-face flashcard-face-back absolute inset-0 rounded-2xl border border-primary/20 bg-white shadow-md p-6 flex flex-col items-center justify-center text-center">
+                          <span className="text-xl font-semibold text-slate-900 mb-1">{currentCard.translation}</span>
+                          <span className="text-xs text-slate-500 italic mb-4">{currentCard.part_of_speech}</span>
                           <div className="flex items-start gap-1">
-                            <span className="text-sm text-foreground/80 italic">{currentCard.example}</span>
+                            <span className="text-sm text-slate-700 italic">{currentCard.example}</span>
                             <SpeakButton text={currentCard.example} gender={voiceGender} className="shrink-0 -mt-1" />
                           </div>
-                          <span className="text-xs text-muted-foreground italic mt-1">{currentCard.example_translation}</span>
+                          <span className="text-xs text-slate-500 italic mt-1">{currentCard.example_translation}</span>
                         </div>
                       </div>
                     </div>
                   )}
                   {cardFlipped && (
                     <div className="flex gap-2 mb-3">
-                      <Button variant="outline" onClick={() => rateCard('learning')} className="flex-1 rounded-xl">
+                      <Button variant="outline" onClick={() => rateCard('learning')} className="flex-1 rounded-xl dark:border-white/25 dark:bg-white/5 dark:text-white dark:hover:bg-white/10 dark:hover:text-white">
                         Still learning
                       </Button>
                       <Button onClick={() => rateCard('easy')} className="flex-1 rounded-xl">
@@ -868,22 +897,22 @@ export default function Home({ user, lastProfile, startNew = false }) {
                       </Button>
                     </div>
                   )}
-                  <Progress value={(cardIndex / activeOrder.length) * 100} className="mb-3" />
+                  <Progress value={(cardIndex / activeOrder.length) * 100} className="mb-3 dark:bg-white/10" />
                   <div className="flex items-center justify-between">
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => { setCardFlipped(false); setCardIndex(i => Math.max(i - 1, 0)) }}
                       disabled={cardIndex === 0}
-                      className="text-muted-foreground">
+                      className="text-muted-foreground dark:text-white/60 dark:hover:text-white dark:hover:bg-white/10">
                       ← Prev
                     </Button>
-                    <span className="text-xs text-muted-foreground">{cardIndex + 1} / {activeOrder.length}</span>
+                    <span className="text-xs text-muted-foreground dark:text-white/50">{cardIndex + 1} / {activeOrder.length}</span>
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => { setCardFlipped(false); setCardIndex(i => Math.min(i + 1, activeOrder.length)) }}
-                      className="text-primary hover:text-primary">
+                      className="text-primary hover:text-primary dark:text-[#A5B4FC] dark:hover:text-[#A5B4FC] dark:hover:bg-white/10">
                       Next →
                     </Button>
                   </div>
@@ -897,28 +926,49 @@ export default function Home({ user, lastProfile, startNew = false }) {
               <div>
                 <div className="grid gap-3 sm:grid-cols-2">
                   {words.map((w, i) => (
-                    <div key={i} className="border border-border rounded-xl p-4">
+                    <div key={i} className="rounded-xl border border-slate-200 bg-white shadow-sm p-4">
                       <div className="flex justify-between items-start mb-1">
                         <div className="flex items-baseline gap-1.5">
-                          <span className="text-lg font-semibold text-foreground">{w.word}</span>
+                          <span className="text-lg font-semibold text-slate-900">{w.word}</span>
                           <SpeakButton text={w.word} gender={voiceGender} />
-                          <span className="text-[11px] text-muted-foreground italic">{w.part_of_speech}</span>
+                          <span className="text-[11px] text-slate-500 italic">{w.part_of_speech}</span>
                         </div>
                         <TierBadge tier={w.tier} />
                       </div>
-                      <div className="text-sm text-muted-foreground mb-2">{w.translation}</div>
-                      <div className="text-sm text-foreground/80 border-l-2 border-border pl-3 italic mb-1">{w.example}</div>
-                      <div className="text-sm text-muted-foreground border-l-2 border-border pl-3 italic">{w.example_translation}</div>
+                      <div className="text-sm text-slate-500 mb-2">{w.translation}</div>
+                      <div className="text-sm text-slate-700 border-l-2 border-slate-200 pl-3 italic mb-1">{w.example}</div>
+                      <div className="text-sm text-slate-500 border-l-2 border-slate-200 pl-3 italic">{w.example_translation}</div>
                     </div>
                   ))}
                 </div>
-                {suggestions.length > 0 && (
-                  <div className="mt-6 pt-6 border-t border-border">
-                    <p className="text-xs text-muted-foreground uppercase tracking-widest mb-3">Suggested next topics</p>
-                    <SuggestionsList suggestions={suggestions} onSelect={(topic) => addMoreWords(topic)} loading={loading} />
-                    {loading && <div className="mt-4"><GenerationProgress message="Generating more words…" /></div>}
-                  </div>
-                )}
+                <div className="mt-6 pt-6 border-t border-border dark:border-white/10">
+                  <p className="text-xs text-muted-foreground dark:text-white/50 uppercase tracking-widest mb-3">Suggested next topics</p>
+                  {suggestions.length > 0 ? (
+                    <>
+                      <SuggestionsList suggestions={suggestions} onSelect={(topic) => addMoreWords(topic)} loading={loading} />
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => generateSuggestions(answers, words)}
+                        disabled={suggestionsLoading}
+                        className="mt-3 text-muted-foreground dark:text-white/60 hover:text-foreground dark:hover:text-white dark:hover:bg-white/10">
+                        {suggestionsLoading ? <Loader2 className="size-3.5 animate-spin" /> : <Lightbulb className="size-3.5" />}
+                        {suggestionsLoading ? 'Thinking of topics...' : 'Suggest more topics'}
+                      </Button>
+                    </>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => generateSuggestions(answers, words)}
+                      disabled={suggestionsLoading}
+                      className="rounded-xl dark:border-white/25 dark:bg-white/5 dark:text-white dark:hover:bg-white/10 dark:hover:text-white">
+                      {suggestionsLoading ? <Loader2 className="size-3.5 animate-spin" /> : <Lightbulb className="size-3.5" />}
+                      {suggestionsLoading ? 'Thinking of topics...' : 'Suggest topics'}
+                    </Button>
+                  )}
+                  {loading && <div className="mt-4"><GenerationProgress message="Generating more words…" /></div>}
+                </div>
               </div>
             )}
           </div>

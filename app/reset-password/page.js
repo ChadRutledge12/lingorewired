@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { LogoMark, RED as BRAND_RED } from '@/components/Logo'
+import ThemeToggle from '@/components/ThemeToggle'
 
 // Where the password-reset email link lands. Supabase's client
 // (detectSessionInUrl) turns the recovery token in the URL into a temporary
@@ -50,33 +51,34 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#0f1442]">
-      <div className="px-6 sm:px-10 py-6 flex items-center">
+    <div className="min-h-screen flex flex-col bg-white dark:bg-[#0f1442]">
+      <div className="px-6 sm:px-10 py-6 flex items-center justify-between">
         <div className="flex items-center gap-3" role="img" aria-label="LingoRewired">
-          <LogoMark className="size-12 sm:size-16" />
-          <span className="font-display text-3xl sm:text-4xl font-semibold tracking-tight leading-none" aria-hidden="true">
-            <span className="text-white">Lingo</span><span style={{ color: BRAND_RED }}>Rewired</span>
+          <LogoMark className="size-10 sm:size-14" />
+          <span className="font-display text-xl sm:text-3xl font-semibold tracking-tight leading-none" aria-hidden="true">
+            <span className="text-foreground dark:text-white">Lingo</span><span style={{ color: BRAND_RED }}>Rewired</span>
           </span>
         </div>
+        <ThemeToggle />
       </div>
 
       <div className="flex flex-1 items-center justify-center px-6 py-12">
-        <div className="bg-card text-card-foreground rounded-2xl shadow-sm ring-1 ring-foreground/10 p-6 sm:p-8 w-full max-w-sm">
-          <h1 className="text-2xl font-semibold mb-1 text-foreground">Set a new password</h1>
-          <p className="text-muted-foreground text-sm mb-6">Choose a new password for your account.</p>
+        <div className="w-full max-w-md text-center">
+          <h1 className="font-display text-4xl sm:text-5xl font-medium mb-3 text-foreground dark:text-white">Set a new password</h1>
+          <p className="text-muted-foreground dark:text-white/60 text-base mb-7">Choose a new password for your account.</p>
 
           {error && (
-            <Alert variant="destructive" className="mb-4">
-              <AlertDescription>{error}</AlertDescription>
+            <Alert variant="destructive" className="mb-4 dark:bg-red-500/10 dark:border-red-400/30 text-left">
+              <AlertDescription className="dark:text-red-200">{error}</AlertDescription>
             </Alert>
           )}
 
           {!ready && !error ? (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
+            <div className="flex items-center justify-center gap-2 text-base text-muted-foreground dark:text-white/60 py-4">
               <Loader2 className="size-4 animate-spin" /> Verifying your reset link…
             </div>
           ) : (
-            <form onSubmit={submit} className="space-y-3">
+            <form onSubmit={submit} className="space-y-3 text-left">
               <div className="relative">
                 <Input
                   type={showPassword ? 'text' : 'password'}
@@ -87,17 +89,17 @@ export default function ResetPasswordPage() {
                   minLength={6}
                   autoComplete="new-password"
                   autoFocus
-                  className="pr-9"
+                  className="h-12 rounded-xl px-4 pr-11 text-base dark:bg-white/5 dark:border-white/20 dark:text-white dark:placeholder:text-white/40 dark:focus-visible:border-white/40 dark:focus-visible:ring-white/20"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword((s) => !s)}
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground dark:text-white/50 dark:hover:text-white/90">
                   {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                 </button>
               </div>
-              <Button type="submit" disabled={saving || !ready} className="w-full h-11 rounded-xl">
+              <Button type="submit" disabled={saving || !ready} className="w-full h-12 rounded-xl text-base mt-2">
                 {saving && <Loader2 className="size-4 animate-spin" />}
                 Update password
               </Button>

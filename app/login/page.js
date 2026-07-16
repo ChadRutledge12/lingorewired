@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Loader2, Eye, EyeOff, ArrowLeft } from 'lucide-react'
 import { LogoMark, RED as BRAND_RED } from '@/components/Logo'
+import ThemeToggle from '@/components/ThemeToggle'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -86,36 +87,39 @@ function LoginForm() {
   const submitLabel = mode === 'login' ? 'Log in' : mode === 'signup' ? 'Sign up' : 'Send reset link'
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#0f1442]">
+    <div className="min-h-screen flex flex-col bg-white dark:bg-[#0f1442]">
       <div className="px-6 sm:px-10 py-6 flex flex-wrap items-center justify-between gap-y-2">
         <div className="flex items-center gap-3" role="img" aria-label="LingoRewired">
-          <LogoMark className="size-12 sm:size-16" />
-          <span className="font-display text-3xl sm:text-4xl font-semibold tracking-tight leading-none" aria-hidden="true">
-            <span className="text-white">Lingo</span><span style={{ color: BRAND_RED }}>Rewired</span>
+          <LogoMark className="size-10 sm:size-14" />
+          <span className="font-display text-xl sm:text-3xl font-semibold tracking-tight leading-none" aria-hidden="true">
+            <span className="text-foreground dark:text-white">Lingo</span><span style={{ color: BRAND_RED }}>Rewired</span>
           </span>
         </div>
-        <Link href="/" className="shrink-0 inline-flex items-center gap-1 text-base text-white/60 hover:text-white">
-          <ArrowLeft className="size-4" /> Back to app
-        </Link>
+        <div className="flex items-center gap-1 shrink-0">
+          <ThemeToggle />
+          <Link href="/" className="inline-flex items-center gap-1 text-base text-muted-foreground hover:text-foreground dark:text-white/60 dark:hover:text-white">
+            <ArrowLeft className="size-4" /> Back to app
+          </Link>
+        </div>
       </div>
 
       <div className="flex flex-1 items-center justify-center px-6 py-12">
-        <div className="bg-card text-card-foreground rounded-2xl shadow-sm ring-1 ring-foreground/10 p-6 sm:p-8 w-full max-w-sm">
-          <h1 className="text-2xl font-semibold mb-1 text-foreground">{title}</h1>
-          <p className="text-muted-foreground text-sm mb-6">{subtitle}</p>
+        <div className="w-full max-w-md text-center">
+          <h1 className="font-display text-4xl sm:text-5xl font-medium mb-3 text-foreground dark:text-white">{title}</h1>
+          <p className="text-muted-foreground dark:text-white/60 text-base mb-7">{subtitle}</p>
 
           {error && (
-            <Alert variant="destructive" className="mb-4">
-              <AlertDescription>{error}</AlertDescription>
+            <Alert variant="destructive" className="mb-4 dark:bg-red-500/10 dark:border-red-400/30 text-left">
+              <AlertDescription className="dark:text-red-200">{error}</AlertDescription>
             </Alert>
           )}
           {message && (
-            <Alert className="mb-4">
-              <AlertDescription>{message}</AlertDescription>
+            <Alert className="mb-4 dark:bg-white/10 dark:border-white/20 text-left">
+              <AlertDescription className="dark:text-white/80">{message}</AlertDescription>
             </Alert>
           )}
 
-          <form onSubmit={submit} className="space-y-3">
+          <form onSubmit={submit} className="space-y-3 text-left">
             <Input
               type="email"
               placeholder="you@example.com"
@@ -124,6 +128,7 @@ function LoginForm() {
               required
               autoComplete="email"
               autoFocus
+              className="h-12 rounded-xl px-4 text-base dark:bg-white/5 dark:border-white/20 dark:text-white dark:placeholder:text-white/40 dark:focus-visible:border-white/40 dark:focus-visible:ring-white/20"
             />
             {mode !== 'reset' && (
               <div className="relative">
@@ -135,33 +140,33 @@ function LoginForm() {
                   required
                   minLength={6}
                   autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-                  className="pr-9"
+                  className="h-12 rounded-xl px-4 pr-11 text-base dark:bg-white/5 dark:border-white/20 dark:text-white dark:placeholder:text-white/40 dark:focus-visible:border-white/40 dark:focus-visible:ring-white/20"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword((s) => !s)}
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground dark:text-white/50 dark:hover:text-white/90">
                   {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                 </button>
               </div>
             )}
             {mode === 'login' && (
               <div className="text-right">
-                <button type="button" onClick={() => switchMode('reset')} className="text-xs text-muted-foreground hover:text-foreground">
+                <button type="button" onClick={() => switchMode('reset')} className="text-sm text-muted-foreground hover:text-foreground dark:text-white/50 dark:hover:text-white/90">
                   Forgot password?
                 </button>
               </div>
             )}
-            <Button type="submit" disabled={loading} className="w-full h-11 rounded-xl">
+            <Button type="submit" disabled={loading} className="w-full h-12 rounded-xl text-base mt-2">
               {loading && <Loader2 className="size-4 animate-spin" />}
               {submitLabel}
             </Button>
           </form>
 
-          <p className="text-sm text-muted-foreground mt-6 text-center">
+          <p className="text-muted-foreground dark:text-white/60 text-sm mt-7 text-center">
             {mode === 'reset' ? (
-              <button type="button" onClick={() => switchMode('login')} className="font-medium text-primary hover:underline">
+              <button type="button" onClick={() => switchMode('login')} className="font-medium text-primary hover:underline dark:text-[#A5B4FC]">
                 Back to log in
               </button>
             ) : (
@@ -170,7 +175,7 @@ function LoginForm() {
                 <button
                   type="button"
                   onClick={() => switchMode(mode === 'login' ? 'signup' : 'login')}
-                  className="font-medium text-primary hover:underline">
+                  className="font-medium text-primary hover:underline dark:text-[#A5B4FC]">
                   {mode === 'login' ? 'Sign up' : 'Log in'}
                 </button>
               </>
