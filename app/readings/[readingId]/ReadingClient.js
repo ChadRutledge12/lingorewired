@@ -1,14 +1,15 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Volume2, GraduationCap, Loader2, Plus } from 'lucide-react'
+import { ArrowLeft, Volume2, GraduationCap, Loader2, Plus, Play, Square } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { LogoLink } from '@/components/Logo'
 import SpeakButton from '@/components/SpeakButton'
-import { speak } from '@/lib/speech'
+import ComprehensionQuiz from '@/components/ComprehensionQuiz'
+import { speak, stopSpeaking } from '@/lib/speech'
 import { useVoiceGender } from '@/lib/useVoiceGender'
 
 function escapeRegex(s) {
@@ -89,14 +90,55 @@ function Sentence({ sentence, alwaysShowEn, voiceGender, onTapWord }) {
   )
 }
 
+// No text shown at all — just play/replay controls for the whole passage,
+// so the learner practices listening comprehension without reading along.
+function ListeningPlayer({ fullText, voiceGender }) {
+  const [playing, setPlaying] = useState(false)
+  const [played, setPlayed] = useState(false)
+
+  useEffect(() => () => stopSpeaking(), [])
+
+  const play = () => {
+    setPlaying(true)
+    speak(fullText, voiceGender, { onEnd: () => { setPlaying(false); setPlayed(true) } })
+  }
+  const stop = () => {
+    stopSpeaking()
+    setPlaying(false)
+  }
+
+  return (
+    <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border py-12 px-6 text-center">
+      <Button
+        type="button"
+        size="lg"
+        onClick={playing ? stop : play}
+        aria-label={playing ? 'Stop playback' : 'Play the passage'}
+        className="size-16 rounded-full p-0">
+        {playing ? <Square className="size-6" /> : <Play className="ml-0.5 size-6" />}
+      </Button>
+      <p className="mt-4 text-sm text-muted-foreground">
+        {playing ? 'Playing…' : played ? 'Tap to listen again' : 'Tap to listen — no text, just audio'}
+      </p>
+    </div>
+  )
+}
+
 export default function ReadingClient({ reading, deckName }) {
   const router = useRouter()
   const { gender: voiceGender } = useVoiceGender()
   const [mode, setMode] = useState('tap') // 'tap' = per-sentence on demand, 'always' = show all
+  const [viewMode, setViewMode] = useState('read') // 'read' | 'listen'
+  const [transcriptRevealed, setTranscriptRevealed] = useState(false)
   const [tapped, setTapped] = useState(() => new Set())
   const [continuing, setContinuing] = useState(false)
   const [continueError, setContinueError] = useState('')
   const sentences = reading.content?.sentences || []
+  const comprehension = reading.content?.comprehension
+
+  // Switching Read/Listen tabs shouldn't carry over a stale transcript
+  // reveal from a previous listening attempt.
+  const changeViewMode = (v) => { setViewMode(v); setTranscriptRevealed(false) }
 
   const fullText = sentences.map((s) => s.es).join(' ')
 
@@ -117,6 +159,7 @@ export default function ReadingClient({ reading, deckName }) {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to continue the story')
+      setTranscriptRevealed(false) // the regenerated quiz below shouldn't inherit a stale reveal
       router.refresh() // reload with the appended sentences
     } catch (err) {
       setContinueError(err.message || 'Failed to continue the story')
@@ -141,29 +184,64 @@ export default function ReadingClient({ reading, deckName }) {
               {deckName && <p className="text-[11px] text-muted-foreground mb-1">{deckName}</p>}
               <h1 className="text-2xl font-semibold text-foreground">{reading.title}</h1>
             </div>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-sm"
-              onClick={() => speak(fullText, voiceGender)}
-              aria-label="Read the whole story aloud"
-              className="shrink-0 text-muted-foreground hover:text-primary">
-              <Volume2 className="size-5" />
-            </Button>
+            {viewMode === 'read' && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                onClick={() => speak(fullText, voiceGender)}
+                aria-label="Read the whole story aloud"
+                className="shrink-0 text-muted-foreground hover:text-primary">
+                <Volume2 className="size-5" />
+              </Button>
+            )}
           </div>
 
-          <Tabs value={mode} onValueChange={setMode} className="mb-6">
+          <Tabs value={viewMode} onValueChange={changeViewMode} className="mb-6">
             <TabsList className="grid grid-cols-2 w-full max-w-xs">
-              <TabsTrigger value="tap">Tap for translation</TabsTrigger>
-              <TabsTrigger value="always">Show all English</TabsTrigger>
+              <TabsTrigger value="read">Read</TabsTrigger>
+              <TabsTrigger value="listen">Listen</TabsTrigger>
             </TabsList>
           </Tabs>
 
-          <div className="space-y-4">
-            {sentences.map((s, i) => (
-              <Sentence key={i} sentence={s} alwaysShowEn={mode === 'always'} voiceGender={voiceGender} onTapWord={tapWord} />
-            ))}
-          </div>
+          {viewMode === 'read' ? (
+            <>
+              <Tabs value={mode} onValueChange={setMode} className="mb-6">
+                <TabsList className="grid grid-cols-2 w-full max-w-xs">
+                  <TabsTrigger value="tap">Tap for translation</TabsTrigger>
+                  <TabsTrigger value="always">Show all English</TabsTrigger>
+                </TabsList>
+              </Tabs>
+
+              <div className="space-y-4">
+                {sentences.map((s, i) => (
+                  <Sentence key={i} sentence={s} alwaysShowEn={mode === 'always'} voiceGender={voiceGender} onTapWord={tapWord} />
+                ))}
+              </div>
+            </>
+          ) : (
+            <ListeningPlayer fullText={fullText} voiceGender={voiceGender} />
+          )}
+
+          {comprehension?.questions?.length > 0 && (
+            <>
+              <ComprehensionQuiz
+                key={`${viewMode}-${sentences.length}`}
+                questions={comprehension.questions}
+                onSubmit={() => { if (viewMode === 'listen') setTranscriptRevealed(true) }}
+              />
+              {viewMode === 'listen' && transcriptRevealed && (
+                <div className="mt-6 border-t border-border pt-6">
+                  <p className="mb-3 text-xs text-muted-foreground uppercase tracking-widest">Transcript</p>
+                  <div className="space-y-4">
+                    {sentences.map((s, i) => (
+                      <Sentence key={i} sentence={s} alwaysShowEn voiceGender={voiceGender} onTapWord={tapWord} />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
 
           <div className="mt-8 flex flex-wrap gap-2 border-t border-border pt-5">
             <Button variant="outline" size="sm" onClick={continueStory} disabled={continuing} className="rounded-xl">
@@ -181,9 +259,11 @@ export default function ReadingClient({ reading, deckName }) {
           </div>
           {continueError && <p className="mt-2 text-sm text-red-500">{continueError}</p>}
 
-          <p className="mt-4 text-xs text-muted-foreground">
-            Bold words are from your deck — tap one for its meaning and audio. Tap any sentence to reveal its English.
-          </p>
+          {viewMode === 'read' && (
+            <p className="mt-4 text-xs text-muted-foreground">
+              Bold words are from your deck — tap one for its meaning and audio. Tap any sentence to reveal its English.
+            </p>
+          )}
         </div>
       </div>
     </div>

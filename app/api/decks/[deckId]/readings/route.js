@@ -1,6 +1,24 @@
 import { createClient } from '@/lib/supabase/server'
 import { callClaudeForJson, normalizeWord } from '@/lib/wordGeneration'
-import { buildReadingPrompt, pickReadingTargets, READING_LENGTHS } from '@/lib/readingGeneration'
+import { buildReadingPrompt, pickReadingTargets, READING_LENGTHS, buildComprehensionPrompt, questionCountFor } from '@/lib/readingGeneration'
+
+// Comprehension questions always cover the reading as it currently stands —
+// regenerated from the full text each time (including on "continue"), so a
+// growing story always gets quizzed on everything, not just the first pass.
+// Best-effort: a failure here shouldn't sink the whole reading, since the
+// reading itself is the primary value and the quiz is additive.
+async function generateComprehension(sentences, level) {
+  const fullText = sentences.map((s) => s.es).join(' ')
+  const prompt = buildComprehensionPrompt(fullText, { level, count: questionCountFor(sentences.length) })
+  try {
+    const result = await callClaudeForJson(prompt, 1500)
+    if (!Array.isArray(result?.questions) || result.questions.length === 0) return null
+    return { level: level || null, questions: result.questions }
+  } catch (err) {
+    console.error('Comprehension question generation failed:', err.message)
+    return null
+  }
+}
 
 // Attach the originating card id to each generated target (best-effort, via
 // normalized-word match) so the reading view can offer to review the exact
@@ -86,9 +104,10 @@ export async function POST(request, { params }) {
   if (existing) {
     const merged = [...(existing.content.sentences || []), ...reading.sentences]
     const sourceCardIds = [...new Set(merged.flatMap((s) => (s.targets || []).map((t) => t.cardId).filter(Boolean)))]
+    const comprehension = await generateComprehension(merged, deck.profile?.level)
     const { error } = await supabase
       .from('readings')
-      .update({ content: { sentences: merged, sourceCardIds } })
+      .update({ content: { sentences: merged, sourceCardIds, ...(comprehension ? { comprehension } : {}) } })
       .eq('id', existing.id)
     if (error) {
       return Response.json({ error: error.message }, { status: 500 })
@@ -97,6 +116,7 @@ export async function POST(request, { params }) {
   }
 
   const sourceCardIds = [...new Set(reading.sentences.flatMap((s) => (s.targets || []).map((t) => t.cardId).filter(Boolean)))]
+  const comprehension = await generateComprehension(reading.sentences, deck.profile?.level)
   const { data: saved, error } = await supabase
     .from('readings')
     .insert({
@@ -104,7 +124,7 @@ export async function POST(request, { params }) {
       user_id: user.id,
       title: reading.title,
       scenario: (scenario || '').trim() || null,
-      content: { sentences: reading.sentences, sourceCardIds },
+      content: { sentences: reading.sentences, sourceCardIds, ...(comprehension ? { comprehension } : {}) },
     })
     .select('id')
     .single()
