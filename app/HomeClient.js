@@ -32,6 +32,7 @@ const GOAL_OPTIONS = ['Travel & get around', 'Work & business', 'Connect with lo
 const INTEREST_OPTIONS = ['Sport & fitness', 'Food & cooking', 'Music', 'Business & finance', 'Nature & outdoors', 'Tech', 'Art & culture', 'Health', 'Scuba diving', 'Law']
 const CONTEXT_OPTIONS = ['Restaurants & cafes', 'Meetings & offices', 'Outdoors & activities', 'Hotels & travel', 'Shops & markets', 'Social situations', 'Emergencies', 'Medical settings']
 const LOCATION_OPTIONS = ['Spain', 'Mexico', 'Argentina', 'Colombia', 'Latin America (general)', 'Not sure yet']
+const REGISTER_OPTIONS = ['Informal — tú', 'Formal — usted']
 
 
 const chipClasses = 'h-auto rounded-full border px-4 py-2 text-sm font-medium transition data-[state=off]:border-border data-[state=off]:bg-transparent data-[state=off]:text-muted-foreground data-[state=off]:hover:bg-muted data-[state=off]:hover:text-foreground data-[state=on]:border-primary data-[state=on]:bg-primary data-[state=on]:text-primary-foreground'
@@ -114,7 +115,8 @@ const EMPTY_ANSWERS = {
   goals: [],
   interests: [],
   contexts: [],
-  location: ''
+  location: '',
+  register: ''
 }
 
 export default function Home({ user, lastProfile, startNew = false }) {
@@ -681,6 +683,15 @@ export default function Home({ user, lastProfile, startNew = false }) {
                   </button>
                 </div>
               ))}
+            </div>
+
+            {/* Optional formality control — no dedicated step, since it's a
+                simple binary choice that defaults to no preference (blank =
+                unchanged generation behavior) rather than adding friction to
+                every learner's onboarding. */}
+            <div className="mb-6">
+              <p className="text-xs text-muted-foreground uppercase tracking-widest mb-2">Formality (optional)</p>
+              <ChipGroup type="single" options={REGISTER_OPTIONS} value={answers.register} onChange={v => selectOne('register', v)} />
             </div>
 
             {/* Cumulative learning: point the next set somewhere specific
