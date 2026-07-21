@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 export default function ThemeToggle({ className = '' }) {
   const { resolvedTheme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- standard hydration mount-guard, not external-store sync
   useEffect(() => setMounted(true), [])
 
   if (!mounted) return <div className={`size-9 ${className}`} />
