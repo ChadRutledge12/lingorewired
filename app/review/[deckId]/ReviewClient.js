@@ -252,7 +252,7 @@ export default function ReviewClient({ deckId, deckName, initialCards }) {
                 <TabsTrigger value="flip" className="dark:text-white/70 dark:hover:text-white dark:data-active:bg-white/20 dark:data-active:text-white">Flip</TabsTrigger>
                 <TabsTrigger value="type" className="dark:text-white/70 dark:hover:text-white dark:data-active:bg-white/20 dark:data-active:text-white">Type</TabsTrigger>
                 <TabsTrigger value="listen" className="dark:text-white/70 dark:hover:text-white dark:data-active:bg-white/20 dark:data-active:text-white">Listen</TabsTrigger>
-                <TabsTrigger value="cloze" className="dark:text-white/70 dark:hover:text-white dark:data-active:bg-white/20 dark:data-active:text-white">Cloze</TabsTrigger>
+                <TabsTrigger value="cloze" className="dark:text-white/70 dark:hover:text-white dark:data-active:bg-white/20 dark:data-active:text-white">Fill-in</TabsTrigger>
               </TabsList>
             </Tabs>
 

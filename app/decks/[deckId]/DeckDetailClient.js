@@ -23,15 +23,61 @@ const POS_OPTIONS = ['noun', 'verb', 'adjective', 'adverb', 'pronoun', 'preposit
 
 const EMPTY_DRAFT = { word: '', translation: '', part_of_speech: '', example: '', example_translation: '' }
 
-// A few reading scenarios drawn from the deck's onboarding profile, so the
-// suggestions feel personal instead of generic. Falls back to broadly useful
-// prompts when there's no profile.
+// Reading scenarios drawn from the deck's onboarding profile, so the
+// suggestions feel personal. The old version glued a fixed prefix onto the
+// raw profile label ("A day at " + "Social situations" → "A day at social
+// situations"), which read badly for the plural/abstract category labels the
+// onboarding uses (and broke outright on custom entries like "with family").
+// Instead, map each known interest/context to a hand-written, concrete scene
+// — these double as the scenario hint sent to the generator, so a specific
+// scene ("A visit to the doctor") also yields a better story than an abstract
+// category. Unrecognized/custom labels are skipped rather than forced into a
+// template; if nothing maps, fall back to broadly useful prompts.
+const SCENARIO_SCENES = {
+  // Onboarding CONTEXT_OPTIONS
+  'restaurants & cafes': 'A meal out with friends',
+  'meetings & offices': 'A day at the office',
+  'outdoors & activities': 'A weekend adventure outdoors',
+  'hotels & travel': 'Checking into a hotel abroad',
+  'shops & markets': 'A trip to the market',
+  'social situations': 'Meeting new people at a party',
+  'emergencies': 'Handling an unexpected emergency',
+  'medical settings': 'A visit to the doctor',
+  // Onboarding INTEREST_OPTIONS
+  'sport & fitness': 'A morning at the gym',
+  'food & cooking': 'Cooking a meal from scratch',
+  'music': 'A night at a live concert',
+  'business & finance': 'Closing an important deal',
+  'nature & outdoors': 'A hike through the mountains',
+  'tech': 'Launching a new app',
+  'art & culture': 'An afternoon at the museum',
+  'health': 'Starting a new healthy routine',
+  'scuba diving': 'A dive on the reef',
+  'law': 'A day in the courtroom',
+  // Survival-guide deck titles (these land in profile.interests)
+  'airport & travel': 'Catching a flight at the airport',
+  'restaurant & food': 'Ordering dinner at a restaurant',
+  'hotel & lodging': 'Checking into a hotel',
+  'emergencies & medical': 'A medical emergency abroad',
+  'wedding': 'A big family wedding',
+  'cities': 'Getting lost in a new city',
+  'camino de santiago': 'A day on the Camino de Santiago',
+}
+
 function scenarioSuggestions(profile) {
+  const labels = [...(profile?.contexts || []), ...(profile?.interests || [])]
+  const seen = new Set()
   const out = []
-  for (const c of (profile?.contexts || []).slice(0, 2)) out.push(`A day at ${c.toLowerCase()}`)
-  for (const i of (profile?.interests || []).slice(0, 2)) out.push(`A story about ${i.toLowerCase()}`)
+  for (const label of labels) {
+    const scene = SCENARIO_SCENES[label.trim().toLowerCase()]
+    if (scene && !seen.has(scene)) {
+      seen.add(scene)
+      out.push(scene)
+    }
+    if (out.length === 4) break
+  }
   if (out.length === 0) return ['A conversation with a friend', 'A small everyday mishap', 'A trip to the market']
-  return out.slice(0, 4)
+  return out
 }
 
 function DeckName({ deck }) {
