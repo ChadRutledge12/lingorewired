@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { Plus, Flame, TrendingUp, BookOpen, Cloud, Snowflake } from 'lucide-react'
+import { Plus, Flame, TrendingUp, BookOpen, Cloud, Snowflake, Settings } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { humanInterval } from '@/lib/fsrs'
 import { computeStats } from '@/lib/stats'
@@ -87,6 +87,9 @@ export default async function DecksPage() {
               <Link href="/?new=1"><Plus className="size-4" /> New set</Link>
             </Button>
             <NewEmptyDeckButton />
+            <Button asChild variant="ghost" size="icon" className="rounded-xl text-muted-foreground hover:text-foreground dark:text-white/60 dark:hover:text-white dark:hover:bg-white/10">
+              <Link href="/settings" aria-label="Your learning profile"><Settings className="size-4" /></Link>
+            </Button>
             <form action="/auth/signout" method="post">
               <Button type="submit" variant="ghost" className="text-muted-foreground hover:text-foreground dark:text-white/60 dark:hover:text-white dark:hover:bg-white/10">Sign out</Button>
             </form>

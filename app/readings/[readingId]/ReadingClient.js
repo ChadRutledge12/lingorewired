@@ -10,6 +10,7 @@ import { LogoLink } from '@/components/Logo'
 import SpeakButton from '@/components/SpeakButton'
 import ComprehensionQuiz from '@/components/ComprehensionQuiz'
 import { speak, stopSpeaking } from '@/lib/speech'
+import { canExtendReading } from '@/lib/readingGeneration'
 import { useVoiceGender } from '@/lib/useVoiceGender'
 
 function escapeRegex(s) {
@@ -147,6 +148,7 @@ export default function ReadingClient({ reading, deckName }) {
   const sourceCardIds = reading.content?.sourceCardIds || []
   const tapWord = (cardId) => setTapped((prev) => (prev.has(cardId) ? prev : new Set(prev).add(cardId)))
   const reviewIds = tapped.size > 0 ? [...tapped] : sourceCardIds
+  const canExtend = canExtendReading(sentences.length)
 
   const continueStory = async () => {
     setContinuing(true)
@@ -244,10 +246,16 @@ export default function ReadingClient({ reading, deckName }) {
           )}
 
           <div className="mt-8 flex flex-wrap gap-2 border-t border-border pt-5">
-            <Button variant="outline" size="sm" onClick={continueStory} disabled={continuing} className="rounded-xl">
-              {continuing ? <Loader2 className="size-3.5 animate-spin" /> : <Plus className="size-3.5" />}
-              {continuing ? 'Continuing the story...' : 'Continue the story'}
-            </Button>
+            {canExtend ? (
+              <Button variant="outline" size="sm" onClick={continueStory} disabled={continuing} className="rounded-xl">
+                {continuing ? <Loader2 className="size-3.5 animate-spin" /> : <Plus className="size-3.5" />}
+                {continuing ? 'Continuing the story...' : 'Continue the story'}
+              </Button>
+            ) : (
+              <p className="flex items-center rounded-xl border border-dashed border-border px-3 py-1.5 text-xs text-muted-foreground">
+                This story is complete — start a new reading to keep going.
+              </p>
+            )}
             {reviewIds.length > 0 && (
               <Button asChild size="sm" className="rounded-xl">
                 <Link href={`/review/${reading.deck_id}?cards=${reviewIds.join(',')}`}>

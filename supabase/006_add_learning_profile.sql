@@ -1,0 +1,13 @@
+-- Adds the canonical per-user learning profile — run this once in the
+-- Supabase SQL Editor. (Also folded into schema.sql for anyone setting up
+-- fresh.)
+--
+-- Until now the learner's onboarding answers only existed as a per-deck
+-- snapshot (decks.profile), and "your profile" was reconstructed by reading
+-- the most recent deck — so the copies drifted and nothing was the source of
+-- truth. This column is that source of truth. Decks keep their snapshot for
+-- provenance; new generation reads this.
+--
+-- Shape (see lib/learningProfile.js): { level, nativeLanguage, goals[],
+-- interests[], contexts[], location, register, notes }
+alter table public.profiles add column if not exists learning_profile jsonb;

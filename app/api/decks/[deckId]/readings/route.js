@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { callClaudeForJson, normalizeWord } from '@/lib/wordGeneration'
-import { buildReadingPrompt, pickReadingTargets, READING_LENGTHS, buildComprehensionPrompt, questionCountFor } from '@/lib/readingGeneration'
+import { buildReadingPrompt, pickReadingTargets, READING_LENGTHS, buildComprehensionPrompt, questionCountFor, canExtendReading, MAX_READING_SENTENCES } from '@/lib/readingGeneration'
 
 // Comprehension questions always cover the reading as it currently stands —
 // regenerated from the full text each time (including on "continue"), so a
@@ -69,6 +69,11 @@ export async function POST(request, { params }) {
       .single()
     if (!data) {
       return Response.json({ error: 'Reading not found' }, { status: 404 })
+    }
+    // Enforce the length cap server-side too, so it holds even if the client's
+    // disabled button is bypassed.
+    if (!canExtendReading(data.content?.sentences?.length)) {
+      return Response.json({ error: `This story has reached its full length (${MAX_READING_SENTENCES} sentences). Start a new reading to keep going.` }, { status: 400 })
     }
     existing = data
   }

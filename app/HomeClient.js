@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Loader2, X, PartyPopper, Download, LogOut, Pencil, Plus, Lightbulb } from 'lucide-react'
+import { Loader2, PartyPopper, Download, LogOut, Pencil, Plus, Lightbulb } from 'lucide-react'
 import { exportDeckPdf } from '@/lib/exportPdf'
 import { tierInfo } from '@/lib/tier'
 import { Button } from '@/components/ui/button'
@@ -11,7 +11,6 @@ import { Progress } from '@/components/ui/progress'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import SpeakButton from '@/components/SpeakButton'
@@ -25,75 +24,19 @@ import Calibration from '@/components/Calibration'
 import SurvivalGuidePicker from '@/components/SurvivalGuidePicker'
 import { useVoiceGender } from '@/lib/useVoiceGender'
 import { SURVIVAL_GUIDES } from '@/lib/survivalGuides'
-
-const LEVEL_OPTIONS = ['Complete beginner', 'A1 — I know a little', 'A2 — Basic phrases', 'B1 — Conversational', 'B2+ — Comfortable']
-const LANGUAGE_OPTIONS = ['English', 'French', 'Italian', 'Portuguese', 'German', 'Other']
-const GOAL_OPTIONS = ['Travel & get around', 'Work & business', 'Connect with locals', 'Living abroad', 'Academic study', 'Hobby / curiosity']
-const INTEREST_OPTIONS = ['Sport & fitness', 'Food & cooking', 'Music', 'Business & finance', 'Nature & outdoors', 'Tech', 'Art & culture', 'Health', 'Scuba diving', 'Law']
-const CONTEXT_OPTIONS = ['Restaurants & cafes', 'Meetings & offices', 'Outdoors & activities', 'Hotels & travel', 'Shops & markets', 'Social situations', 'Emergencies', 'Medical settings']
-const LOCATION_OPTIONS = ['Spain', 'Mexico', 'Argentina', 'Colombia', 'Latin America (general)', 'Not sure yet']
-const REGISTER_OPTIONS = ['Informal — tú', 'Formal — usted']
-
-
-const chipClasses = 'h-auto rounded-full border px-4 py-2 text-sm font-medium transition data-[state=off]:border-border data-[state=off]:bg-transparent data-[state=off]:text-muted-foreground data-[state=off]:hover:bg-muted data-[state=off]:hover:text-foreground data-[state=on]:border-primary data-[state=on]:bg-primary data-[state=on]:text-primary-foreground'
-
-function ChipGroup({ type, options, value, onChange }) {
-  return (
-    <ToggleGroup
-      type={type}
-      value={value}
-      onValueChange={(v) => {
-        if (type === 'single' && !v) return
-        onChange(v)
-      }}
-      className="mb-4 flex w-full flex-wrap justify-start gap-2"
-    >
-      {options.map(opt => (
-        <ToggleGroupItem key={opt} value={opt} className={chipClasses}>
-          {opt}
-        </ToggleGroupItem>
-      ))}
-    </ToggleGroup>
-  )
-}
-
-function CustomChipInput({ options, values, otherValue, onOtherChange, onAdd, onRemove }) {
-  // Dedupe defensively so a legacy profile with repeated custom entries
-  // renders each chip once (and avoids duplicate React keys).
-  const custom = [...new Set(values.filter(v => !options.includes(v)))]
-  return (
-    <>
-      {custom.length > 0 && (
-        <div className="mb-4 flex flex-wrap gap-2">
-          {custom.map(v => (
-            <Badge key={v} variant="secondary" className="h-auto gap-1 rounded-full py-1 pr-1.5 pl-3">
-              {v}
-              <button
-                type="button"
-                onClick={() => onRemove(v)}
-                aria-label={`Remove ${v}`}
-                className="rounded-full p-0.5 hover:bg-foreground/10">
-                <X className="size-3" />
-              </button>
-            </Badge>
-          ))}
-        </div>
-      )}
-      <div className="mb-6 flex gap-2">
-        <Input
-          placeholder="Something else? Type it here..."
-          value={otherValue}
-          onChange={e => onOtherChange(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); onAdd() } }}
-          className="rounded-full"
-        />
-        <Button type="button" variant="secondary" onClick={onAdd} className="shrink-0 rounded-full">
-          Add
-        </Button>
-      </div>
-    </>
-  )
-}
+import { ChipGroup, CustomChipInput } from '@/components/ProfileChips'
+import {
+  EMPTY_PROFILE,
+  LEVEL_OPTIONS,
+  LANGUAGE_OPTIONS,
+  GOAL_OPTIONS,
+  INTEREST_OPTIONS,
+  CONTEXT_OPTIONS,
+  LOCATION_OPTIONS,
+  REGISTER_OPTIONS,
+  REGISTER_DESCRIPTIONS,
+  MULTI_FIELDS,
+} from '@/lib/learningProfile'
 
 function TierBadge({ tier }) {
   const info = tierInfo(tier)
@@ -109,15 +52,10 @@ function TierBadge({ tier }) {
   )
 }
 
-const EMPTY_ANSWERS = {
-  level: '',
-  nativeLanguage: '',
-  goals: [],
-  interests: [],
-  contexts: [],
-  location: '',
-  register: ''
-}
+// The questionnaire edits the same shape the settings page does — see
+// lib/learningProfile.js. (`notes` isn't asked for here; it's set on
+// /settings, and carries through untouched when a profile is loaded.)
+const EMPTY_ANSWERS = EMPTY_PROFILE
 
 export default function Home({ user, lastProfile, startNew = false }) {
   const router = useRouter()
@@ -196,7 +134,7 @@ export default function Home({ user, lastProfile, startNew = false }) {
       // Dedupe the carried-over multi-select answers — older profiles can
       // hold duplicate custom entries from before the add paths deduped.
       const cleaned = { ...EMPTY_ANSWERS, ...lastProfile }
-      for (const key of ['goals', 'interests', 'contexts']) {
+      for (const key of MULTI_FIELDS) {
         if (Array.isArray(cleaned[key])) cleaned[key] = [...new Set(cleaned[key])]
       }
       setAnswers(cleaned)
@@ -691,7 +629,16 @@ export default function Home({ user, lastProfile, startNew = false }) {
                 every learner's onboarding. */}
             <div className="mb-6">
               <p className="text-xs text-muted-foreground uppercase tracking-widest mb-2">Formality (optional)</p>
-              <ChipGroup type="single" options={REGISTER_OPTIONS} value={answers.register} onChange={v => selectOne('register', v)} />
+              <ChipGroup
+                type="single"
+                options={REGISTER_OPTIONS}
+                value={answers.register}
+                onChange={v => selectOne('register', v)}
+                descriptions={REGISTER_DESCRIPTIONS}
+              />
+              <p className="text-xs text-muted-foreground -mt-2">
+                Not sure? <span className="text-foreground">tú</span> is casual (friends, family); <span className="text-foreground">usted</span> is polite (strangers, work).
+              </p>
             </div>
 
             {/* Cumulative learning: point the next set somewhere specific

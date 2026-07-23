@@ -95,11 +95,16 @@ create table if not exists public.readings (
 );
 
 -- ---------------------------------------------------------------------------
--- Profiles: per-user habit-loop state (daily goal, streak-freeze bookkeeping,
--- reminder-email opt-out). One row per user, created lazily on first review.
+-- Profiles: per-user state — the canonical learning profile (onboarding
+-- answers + freeform note) plus habit-loop state (daily goal, streak-freeze
+-- bookkeeping, reminder-email opt-out). One row per user, created lazily.
 -- ---------------------------------------------------------------------------
 create table if not exists public.profiles (
   user_id           uuid primary key references auth.users (id) on delete cascade,
+  -- The learner's answers, as edited on /settings. Source of truth for
+  -- generation; decks.profile is a snapshot taken at deck-creation time.
+  -- Shape: see lib/learningProfile.js. Null until they first save.
+  learning_profile  jsonb,
   daily_goal        integer not null default 20,
   streak_freezes    integer not null default 1,
   frozen_dates      jsonb not null default '[]',
@@ -108,6 +113,8 @@ create table if not exists public.profiles (
   unsubscribe_token uuid not null default gen_random_uuid(),
   created_at        timestamptz not null default now()
 );
+
+alter table public.profiles add column if not exists learning_profile jsonb;
 
 -- Indexes for the hot queries: cards in a deck, and "due now" per user.
 create index if not exists cards_deck_id_idx     on public.cards (deck_id);
