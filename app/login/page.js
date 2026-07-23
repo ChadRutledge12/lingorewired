@@ -31,7 +31,9 @@ function LoginForm() {
   const [mode, setMode] = useState(params.get('mode') === 'signup' ? 'signup' : 'login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
+  // The auth callback redirects here with ?error=... when an email link is bad
+  // or expired; show that instead of a silent bounce.
+  const [error, setError] = useState(params.get('error') || '')
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
@@ -57,7 +59,13 @@ function LoginForm() {
         setMessage('If an account exists for that email, a password reset link is on its way. Check your inbox.')
         setMode('login')
       } else if (mode === 'signup') {
-        const { data, error } = await withTimeout(supabase.auth.signUp({ email, password }))
+        const { data, error } = await withTimeout(
+          supabase.auth.signUp({
+            email,
+            password,
+            options: { emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}` },
+          })
+        )
         if (error) throw error
         if (data.session) {
           router.push(next)
