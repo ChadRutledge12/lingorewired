@@ -1,9 +1,11 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
+import { cookies } from 'next/headers'
 import { Plus, Flame, TrendingUp, BookOpen, Cloud, Snowflake, Settings } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { humanInterval } from '@/lib/fsrs'
-import { computeStats } from '@/lib/stats'
+import { computeStats, resolveTimeZone } from '@/lib/stats'
+import TimezoneSync from '@/components/TimezoneSync'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { LogoMark, RED as BRAND_RED } from '@/components/Logo'
@@ -62,11 +64,13 @@ export default async function DecksPage() {
     else if (!e.nextDue || c.due < e.nextDue) e.nextDue = c.due
   }
 
-  const stats = computeStats(reviewLogs || [], cards || [], frozenDates)
+  const timeZone = resolveTimeZone((await cookies()).get('tz')?.value)
+  const stats = computeStats(reviewLogs || [], cards || [], frozenDates, timeZone)
   const totalDue = Object.values(counts).reduce((sum, c) => sum + c.due, 0)
 
   return (
     <div className="min-h-screen bg-muted/40 dark:bg-[#0f1442] p-4 sm:p-6">
+      <TimezoneSync />
       <div className="mx-auto w-full max-w-2xl">
         <div className="mb-6 flex items-center justify-between">
           <Link href="/" className="inline-flex items-center gap-3" role="img" aria-label="LingoRewired">
