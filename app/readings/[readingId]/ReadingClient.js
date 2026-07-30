@@ -2,14 +2,14 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Volume2, GraduationCap, Loader2, Plus, Play, Square } from 'lucide-react'
+import { ArrowLeft, Volume2, GraduationCap, Loader2, Plus, Play, Pause, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { LogoLink } from '@/components/Logo'
 import SpeakButton from '@/components/SpeakButton'
 import ComprehensionQuiz from '@/components/ComprehensionQuiz'
-import { speak, stopSpeaking } from '@/lib/speech'
+import { speak, stopSpeaking, pauseSpeaking, resumeSpeaking } from '@/lib/speech'
 import { canExtendReading } from '@/lib/readingGeneration'
 import { useVoiceGender } from '@/lib/useVoiceGender'
 
@@ -91,35 +91,50 @@ function Sentence({ sentence, alwaysShowEn, voiceGender, onTapWord }) {
   )
 }
 
-// No text shown at all — just play/replay controls for the whole passage,
+// No text shown at all — just play/pause controls for the whole passage,
 // so the learner practices listening comprehension without reading along.
+// 'idle' → not started/finished, 'playing', 'paused'.
 function ListeningPlayer({ fullText, voiceGender }) {
-  const [playing, setPlaying] = useState(false)
-  const [played, setPlayed] = useState(false)
+  const [status, setStatus] = useState('idle')
 
   useEffect(() => () => stopSpeaking(), [])
 
   const play = () => {
-    setPlaying(true)
-    speak(fullText, voiceGender, { onEnd: () => { setPlaying(false); setPlayed(true) } })
+    setStatus('playing')
+    speak(fullText, voiceGender, { onEnd: () => setStatus('idle') })
   }
-  const stop = () => {
-    stopSpeaking()
-    setPlaying(false)
-  }
+  const pause = () => { pauseSpeaking(); setStatus('paused') }
+  const resume = () => { resumeSpeaking(); setStatus('playing') }
+  const restart = () => { stopSpeaking(); play() }
+
+  const started = status !== 'idle'
+  const primaryAction = status === 'playing' ? pause : status === 'paused' ? resume : play
 
   return (
     <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border py-12 px-6 text-center">
-      <Button
-        type="button"
-        size="lg"
-        onClick={playing ? stop : play}
-        aria-label={playing ? 'Stop playback' : 'Play the passage'}
-        className="size-16 rounded-full p-0">
-        {playing ? <Square className="size-6" /> : <Play className="ml-0.5 size-6" />}
-      </Button>
+      <div className="flex items-center gap-4">
+        <Button
+          type="button"
+          size="lg"
+          onClick={primaryAction}
+          aria-label={status === 'playing' ? 'Pause playback' : status === 'paused' ? 'Resume playback' : 'Play the passage'}
+          className="size-16 rounded-full p-0">
+          {status === 'playing' ? <Pause className="size-6" /> : <Play className="ml-0.5 size-6" />}
+        </Button>
+        {started && (
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            onClick={restart}
+            aria-label="Start over"
+            className="size-11 rounded-full">
+            <RotateCcw className="size-4" />
+          </Button>
+        )}
+      </div>
       <p className="mt-4 text-sm text-muted-foreground">
-        {playing ? 'Playing…' : played ? 'Tap to listen again' : 'Tap to listen — no text, just audio'}
+        {status === 'playing' ? 'Playing… tap to pause' : status === 'paused' ? 'Paused — tap to resume' : 'Tap to listen — no text, just audio'}
       </p>
     </div>
   )
