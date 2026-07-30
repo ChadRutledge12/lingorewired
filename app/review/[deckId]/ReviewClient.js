@@ -282,6 +282,7 @@ export default function ReviewClient({ deckId, deckName, initialCards }) {
                     <div className="flex items-center gap-1 mb-2">
                       <span className="text-2xl font-semibold text-slate-900">{current.word}</span>
                       <SpeakButton text={current.word} gender={voiceGender} />
+                      <SpeakButton text={current.word} gender={voiceGender} slow />
                     </div>
                     <span className="text-sm text-slate-500 italic">{current.part_of_speech}</span>
                     <span className="text-xs text-slate-400 mt-6">Tap to reveal</span>

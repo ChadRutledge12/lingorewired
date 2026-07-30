@@ -829,6 +829,7 @@ export default function Home({ user, lastProfile, startNew = false }) {
                           <div className="flex items-center gap-1 mb-2">
                             <span className="text-2xl font-semibold text-slate-900">{currentCard.word}</span>
                             <SpeakButton text={currentCard.word} gender={voiceGender} />
+                            <SpeakButton text={currentCard.word} gender={voiceGender} slow />
                           </div>
                           <span className="text-sm text-slate-500 italic">{currentCard.part_of_speech}</span>
                           <span className="text-xs text-slate-400 mt-6">Tap to reveal</span>
