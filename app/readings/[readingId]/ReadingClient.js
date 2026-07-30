@@ -91,10 +91,11 @@ function Sentence({ sentence, alwaysShowEn, voiceGender, onTapWord }) {
   )
 }
 
-// No text shown at all — just play/pause controls for the whole passage,
-// so the learner practices listening comprehension without reading along.
-// 'idle' → not started/finished, 'playing', 'paused'.
-function ListeningPlayer({ fullText, voiceGender }) {
+// Play / pause / resume / restart for a whole passage, shared by the big
+// listening player and the compact read-aloud header control. Status is
+// 'idle' (not started or finished), 'playing', or 'paused'. Stops playback if
+// the component unmounts (e.g. switching Read/Listen tabs).
+function usePassagePlayback(fullText, voiceGender) {
   const [status, setStatus] = useState('idle')
 
   useEffect(() => () => stopSpeaking(), [])
@@ -103,12 +104,21 @@ function ListeningPlayer({ fullText, voiceGender }) {
     setStatus('playing')
     speak(fullText, voiceGender, { onEnd: () => setStatus('idle') })
   }
-  const pause = () => { pauseSpeaking(); setStatus('paused') }
-  const resume = () => { resumeSpeaking(); setStatus('playing') }
+  const toggle = () => {
+    if (status === 'playing') { pauseSpeaking(); setStatus('paused') }
+    else if (status === 'paused') { resumeSpeaking(); setStatus('playing') }
+    else play()
+  }
   const restart = () => { stopSpeaking(); play() }
 
+  return { status, toggle, restart }
+}
+
+// No text shown at all — big play/pause controls so the learner practices
+// listening comprehension without reading along.
+function ListeningPlayer({ fullText, voiceGender }) {
+  const { status, toggle, restart } = usePassagePlayback(fullText, voiceGender)
   const started = status !== 'idle'
-  const primaryAction = status === 'playing' ? pause : status === 'paused' ? resume : play
 
   return (
     <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border py-12 px-6 text-center">
@@ -116,7 +126,7 @@ function ListeningPlayer({ fullText, voiceGender }) {
         <Button
           type="button"
           size="lg"
-          onClick={primaryAction}
+          onClick={toggle}
           aria-label={status === 'playing' ? 'Pause playback' : status === 'paused' ? 'Resume playback' : 'Play the passage'}
           className="size-16 rounded-full p-0">
           {status === 'playing' ? <Pause className="size-6" /> : <Play className="ml-0.5 size-6" />}
@@ -136,6 +146,38 @@ function ListeningPlayer({ fullText, voiceGender }) {
       <p className="mt-4 text-sm text-muted-foreground">
         {status === 'playing' ? 'Playing… tap to pause' : status === 'paused' ? 'Paused — tap to resume' : 'Tap to listen — no text, just audio'}
       </p>
+    </div>
+  )
+}
+
+// Compact read-aloud control for the Read-mode header: same play/pause/restart
+// as the listening player, sized to sit inline next to the story title.
+function ReadAloudControl({ fullText, voiceGender }) {
+  const { status, toggle, restart } = usePassagePlayback(fullText, voiceGender)
+  const started = status !== 'idle'
+
+  return (
+    <div className="flex shrink-0 items-center gap-0.5">
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon-sm"
+        onClick={toggle}
+        aria-label={status === 'playing' ? 'Pause reading' : status === 'paused' ? 'Resume reading' : 'Read the whole story aloud'}
+        className="text-muted-foreground hover:text-primary">
+        {status === 'playing' ? <Pause className="size-5" /> : status === 'paused' ? <Play className="size-5" /> : <Volume2 className="size-5" />}
+      </Button>
+      {started && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          onClick={restart}
+          aria-label="Start over"
+          className="text-muted-foreground hover:text-primary">
+          <RotateCcw className="size-4" />
+        </Button>
+      )}
     </div>
   )
 }
@@ -202,15 +244,7 @@ export default function ReadingClient({ reading, deckName }) {
               <h1 className="text-2xl font-semibold text-foreground">{reading.title}</h1>
             </div>
             {viewMode === 'read' && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                onClick={() => speak(fullText, voiceGender)}
-                aria-label="Read the whole story aloud"
-                className="shrink-0 text-muted-foreground hover:text-primary">
-                <Volume2 className="size-5" />
-              </Button>
+              <ReadAloudControl fullText={fullText} voiceGender={voiceGender} />
             )}
           </div>
 
