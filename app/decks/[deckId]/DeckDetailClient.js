@@ -398,7 +398,7 @@ function CardRow({ card, onSaved, onDeleted, onExplore }) {
   )
 }
 
-export default function DeckDetailClient({ deck, initialCards, dueCount, initialReadings = [] }) {
+export default function DeckDetailClient({ deck, initialCards, dueCount, initialReadings = [], initialImportMode = null }) {
   const router = useRouter()
   const [cards, setCards] = useState(initialCards)
   const [amplifying, setAmplifying] = useState(false)
@@ -412,7 +412,9 @@ export default function DeckDetailClient({ deck, initialCards, dueCount, initial
   const [suggestionsError, setSuggestionsError] = useState('')
   const [addingTopic, setAddingTopic] = useState('')
   const [addingCard, setAddingCard] = useState(false)
-  const [importOpen, setImportOpen] = useState(false)
+  // Opens already-open when the learner said how they wanted to fill this deck
+  // while creating it — the paste box is the thing they came here for.
+  const [importOpen, setImportOpen] = useState(Boolean(initialImportMode))
   const [readings] = useState(initialReadings)
   const [readingPanelOpen, setReadingPanelOpen] = useState(false)
   const [readingScenario, setReadingScenario] = useState('')
@@ -421,7 +423,9 @@ export default function DeckDetailClient({ deck, initialCards, dueCount, initial
   const [readingError, setReadingError] = useState('')
   // Empty-deck "Fill this deck" panel (title-seeded suggestions). Auto-shows
   // only for decks that start empty; stays open through the first adds.
-  const [fillOpen, setFillOpen] = useState(initialCards.length === 0)
+  // …but not when they arrived to paste something: suggesting words to someone
+  // who is holding the text they want is answering a question they didn't ask.
+  const [fillOpen, setFillOpen] = useState(initialCards.length === 0 && !initialImportMode)
   const [fillTab, setFillTab] = useState('words')
   const [fillWords, setFillWords] = useState([])
   const [fillTopics, setFillTopics] = useState([])
@@ -752,6 +756,7 @@ export default function DeckDetailClient({ deck, initialCards, dueCount, initial
         {importOpen && (
           <ImportWordsPanel
             deckId={deck.id}
+            initialMode={initialImportMode || 'list'}
             onAdded={(added) => setCards((prev) => [...prev, ...added])}
             onClose={() => setImportOpen(false)}
           />

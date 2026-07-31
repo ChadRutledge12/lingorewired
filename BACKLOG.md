@@ -20,7 +20,7 @@ one thing you can do without me.
 | Slot | Item | Why it's here |
 |---|---|---|
 | **Quick win (S/M)** | LR-22 — Settings "✓ Saved" pill shows before any edit | Small, isolated, visible. Good warm-up task. |
-| **Main build (M/L)** | LR-33 — Import UI for the enrich endpoint | Built and click-through-verified 2026-07-31; uncommitted, awaiting your go-ahead. |
+| **Main build (M/L)** | LR-36 — Import as a way to *start* a deck, not just fill one | LR-7 and LR-33 shipped, but both live inside an existing deck. Pasting a letter is a reason to make a deck, not a thing you do after. |
 | **Yours, no code** | LR-24 — add `SUPABASE_SERVICE_ROLE_KEY` to `.env.local` | Blocks local cron/admin testing. Five minutes in the Supabase dashboard. |
 
 **Also open, awaiting your word:** LR-30 (rework the level/placement test) needs a
@@ -61,7 +61,7 @@ talk-through with you before anyone writes code.
 | ID | Task | Why | Pri | Est | Status | Done when |
 |---|---|---|---|---|---|---|
 | LR-31 | Word/passage cut-off bug | Real students were hitting it | P1 | M | **shipped** `9cf41dc` | — |
-| LR-32 | "Read it slowly" / enunciation mode | Beginners need to hear each syllable | P2 | S | **shipped** `7496745` (+ `0a917e9` Read-tab pause/restart) | — |
+| LR-32 | "Read it slowly" / enunciation mode | Beginners need to hear each syllable | P2 | S | **shipped** `7496745` (+ `0a917e9` Read-tab pause/restart, `a0b481c` app-wide) | — |
 | LR-14 | Color el/la by gender | Cheap gender-learning win (the slow-audio half of this shipped as LR-32) | P2 | S | open (half done) | Nouns tinted by article gender |
 | LR-13 | **Native/neural audio** (replace browser Web Speech TTS) | Browser TTS is a real quality liability on many devices — the actual ceiling | P2 | L | open | Server-generated audio for cards/readings, cached |
 
@@ -69,8 +69,9 @@ talk-through with you before anyone writes code.
 
 | ID | Task | Why | Pri | Est | Status | Done when |
 |---|---|---|---|---|---|---|
-| LR-7 | **Paste-text → vocab extraction** | Paste a letter/article → instant deck of the hard words | P1 | M | open | New flow: paste text → AI extracts + glosses → saveable deck |
-| LR-33 | **Import UI for the enrich endpoint** | The backend did nothing without a UI | P1 | M | built + verified 2026-07-31, **uncommitted** | Paste box on deck detail + sense picker for ambiguous words + "Fill this in" on the manual add form |
+| LR-7 | **Paste-text → vocab extraction** | Paste a letter/article → instant deck of the hard words | P1 | M | **shipped** `b6725be` | — |
+| LR-33 | **Import UI for the enrich endpoint** | The backend did nothing without a UI | P1 | M | **shipped** `9d8d5fd` | — |
+| LR-36 | **Import as a way to start a deck** | Pasting a letter is a reason to make a deck, not something you do after making one | P1 | M | in progress | The import tabs appear in the new-set flow, not only on an existing deck |
 | LR-15 | Reading genres beyond narrative (official letters, dialogues) | Real-world formats, esp. the immigration persona | P2 | M | open | Reading generator offers ≥2 non-story genres |
 | LR-16 | Role-play dialogue exercises | Production practice in context | P3 | L | open | Interactive back-and-forth dialogue drill |
 | LR-17 | Chunks / collocations & idioms layer | Fluency > isolated words | P3 | L | open | Multi-word items as a first-class card type |

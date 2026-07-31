@@ -12,7 +12,7 @@ import { LogoMark, RED as BRAND_RED } from '@/components/Logo'
 import ThemeToggle from '@/components/ThemeToggle'
 import DailyGoalTile from '@/components/DailyGoalTile'
 import DeleteDeckButton from './DeleteDeckButton'
-import NewEmptyDeckButton from './NewEmptyDeckButton'
+import NewDeckButton from './NewDeckButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -90,7 +90,7 @@ export default async function DecksPage() {
             <Button asChild variant="outline" className="rounded-xl dark:border-white/25 dark:bg-white/5 dark:text-white dark:hover:bg-white/10 dark:hover:text-white">
               <Link href="/?new=1"><Plus className="size-4" /> New set</Link>
             </Button>
-            <NewEmptyDeckButton />
+            <NewDeckButton />
             <Button asChild variant="ghost" size="icon" className="rounded-xl text-muted-foreground hover:text-foreground dark:text-white/60 dark:hover:text-white dark:hover:bg-white/10">
               <Link href="/settings" aria-label="Your learning profile"><Settings className="size-4" /></Link>
             </Button>

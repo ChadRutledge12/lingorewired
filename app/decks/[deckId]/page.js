@@ -4,8 +4,11 @@ import DeckDetailClient from './DeckDetailClient'
 
 export const dynamic = 'force-dynamic'
 
-export default async function DeckDetailPage({ params }) {
+export default async function DeckDetailPage({ params, searchParams }) {
   const { deckId } = await params
+  // `?import=list|text` — set by the new-deck flow, which asks how you want to
+  // fill the deck before it exists. Honoured once, on arrival.
+  const importMode = (await searchParams)?.import
   const supabase = await createClient()
   const {
     data: { user },
@@ -31,5 +34,13 @@ export default async function DeckDetailPage({ params }) {
   const nowIso = new Date().toISOString()
   const dueCount = (cards || []).filter((c) => c.due <= nowIso).length
 
-  return <DeckDetailClient deck={deck} initialCards={cards || []} dueCount={dueCount} initialReadings={readings || []} />
+  return (
+    <DeckDetailClient
+      deck={deck}
+      initialCards={cards || []}
+      dueCount={dueCount}
+      initialReadings={readings || []}
+      initialImportMode={importMode === 'list' || importMode === 'text' ? importMode : null}
+    />
+  )
 }

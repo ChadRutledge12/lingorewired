@@ -33,11 +33,14 @@ Estimado cliente: le informamos de que su solicitud de empadronamiento ha sido t
 // unrelated Spanish words, and quietly choosing one is how an import teaches
 // the wrong vocabulary for months. Those come back flagged and stay out of the
 // count until the learner taps a meaning.
-export default function ImportWordsPanel({ deckId, onAdded, onClose }) {
+export default function ImportWordsPanel({ deckId, onAdded, onClose, initialMode = 'list' }) {
   // 'list' — the learner already has the words. 'text' — they have a document
   // and we work out which words are worth learning from it. Two ways in, one
   // review stage out.
-  const [mode, setMode] = useState('list')
+  //
+  // `initialMode` lets the deck-creation flow land straight on the tab the
+  // learner already chose, instead of making them pick the same thing twice.
+  const [mode, setMode] = useState(initialMode)
   const [text, setText] = useState('')
   const [passage, setPassage] = useState('')
   const [stage, setStage] = useState('input')
