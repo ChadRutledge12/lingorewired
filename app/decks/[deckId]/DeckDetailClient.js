@@ -658,7 +658,7 @@ export default function DeckDetailClient({ deck, initialCards, dueCount, initial
             size="sm"
             onClick={() => setImportOpen((o) => !o)}
             className="rounded-xl">
-            <ClipboardPaste className="size-3.5" /> Import a list
+            <ClipboardPaste className="size-3.5" /> Import words
           </Button>
           <Button
             variant="outline"
