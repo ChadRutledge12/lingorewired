@@ -20,7 +20,7 @@ one thing you can do without me.
 | Slot | Item | Why it's here |
 |---|---|---|
 | **Quick win (S/M)** | LR-22 — Settings "✓ Saved" pill shows before any edit | Small, isolated, visible. Good warm-up task. |
-| **Main build (M/L)** | LR-36 — Import as a way to *start* a deck, not just fill one | LR-7 and LR-33 shipped, but both live inside an existing deck. Pasting a letter is a reason to make a deck, not a thing you do after. |
+| **Main build (M/L)** | LR-13 — native/neural audio (replace browser TTS) | Epic D's ceiling. LR-7, LR-32 and LR-36 all shipped 2026-07-31/08-01, so the import story is done; audio quality is now the biggest thing standing between this and a product people trust. |
 | **Yours, no code** | LR-24 — add `SUPABASE_SERVICE_ROLE_KEY` to `.env.local` | Blocks local cron/admin testing. Five minutes in the Supabase dashboard. |
 
 **Also open, awaiting your word:** LR-30 (rework the level/placement test) needs a
@@ -71,7 +71,7 @@ talk-through with you before anyone writes code.
 |---|---|---|---|---|---|---|
 | LR-7 | **Paste-text → vocab extraction** | Paste a letter/article → instant deck of the hard words | P1 | M | **shipped** `b6725be` | — |
 | LR-33 | **Import UI for the enrich endpoint** | The backend did nothing without a UI | P1 | M | **shipped** `9d8d5fd` | — |
-| LR-36 | **Import as a way to start a deck** | Pasting a letter is a reason to make a deck, not something you do after making one | P1 | M | in progress | The import tabs appear in the new-set flow, not only on an existing deck |
+| LR-36 | **Import as a way to start a deck** | Pasting a letter is a reason to make a deck, not something you do after making one | P1 | M | **shipped** `08c99b2` | — |
 | LR-15 | Reading genres beyond narrative (official letters, dialogues) | Real-world formats, esp. the immigration persona | P2 | M | open | Reading generator offers ≥2 non-story genres |
 | LR-16 | Role-play dialogue exercises | Production practice in context | P3 | L | open | Interactive back-and-forth dialogue drill |
 | LR-17 | Chunks / collocations & idioms layer | Fluency > isolated words | P3 | L | open | Multi-word items as a first-class card type |
