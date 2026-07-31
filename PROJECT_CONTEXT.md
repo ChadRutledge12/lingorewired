@@ -2,7 +2,7 @@
 
 Personalized Spanish vocabulary + spaced-repetition study app. Generates a learner's vocabulary set from *their own life* (job, interests, goals, location/dialect) via Claude, then schedules review with real FSRS — not a fixed curriculum. Long-term direction: grow from a vocab app into a full method that teaches grammar synthesized with the vocabulary a student is actively learning (see `app/philosophy/page.js`).
 
-See also: [DECISIONS.md](DECISIONS.md) (why things are built this way), [AI_CONTEXT.md](AI_CONTEXT.md) (Claude-generation workflows), [AI_RULES.md](AI_RULES.md) (coding conventions), [NEXT_TASK.md](NEXT_TASK.md) (what to work on now).
+See also: [DECISIONS.md](DECISIONS.md) (why things are built this way), [AI_CONTEXT.md](AI_CONTEXT.md) (Claude-generation workflows), [AI_RULES.md](AI_RULES.md) (coding conventions), [BACKLOG.md](BACKLOG.md) (the LR-numbered backlog + today's sprint — what to work on now).
 
 ## Stack
 
