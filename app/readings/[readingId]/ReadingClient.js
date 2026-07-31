@@ -8,6 +8,7 @@ import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { LogoLink } from '@/components/Logo'
 import SpeakButton from '@/components/SpeakButton'
+import SpeechSpeedToggle from '@/components/SpeechSpeedToggle'
 import ComprehensionQuiz from '@/components/ComprehensionQuiz'
 import { speak, stopSpeaking, pauseSpeaking, resumeSpeaking } from '@/lib/speech'
 import { canExtendReading } from '@/lib/readingGeneration'
@@ -111,13 +112,18 @@ function usePassagePlayback(fullText, voiceGender) {
   }
   const restart = () => { stopSpeaking(); play() }
 
-  return { status, toggle, restart }
+  // Speech rate is fixed once a chunk queue is underway, so changing speed
+  // mid-passage can only take effect by starting over — which is also what
+  // someone who just asked to hear it slower wants.
+  const restartIfStarted = () => { if (status !== 'idle') restart() }
+
+  return { status, toggle, restart, restartIfStarted }
 }
 
 // No text shown at all — big play/pause controls so the learner practices
 // listening comprehension without reading along.
 function ListeningPlayer({ fullText, voiceGender }) {
-  const { status, toggle, restart } = usePassagePlayback(fullText, voiceGender)
+  const { status, toggle, restart, restartIfStarted } = usePassagePlayback(fullText, voiceGender)
   const started = status !== 'idle'
 
   return (
@@ -146,6 +152,7 @@ function ListeningPlayer({ fullText, voiceGender }) {
       <p className="mt-4 text-sm text-muted-foreground">
         {status === 'playing' ? 'Playing… tap to pause' : status === 'paused' ? 'Paused — tap to resume' : 'Tap to listen — no text, just audio'}
       </p>
+      <SpeechSpeedToggle onChange={restartIfStarted} note className="mt-2" />
     </div>
   )
 }
@@ -153,11 +160,12 @@ function ListeningPlayer({ fullText, voiceGender }) {
 // Compact read-aloud control for the Read-mode header: same play/pause/restart
 // as the listening player, sized to sit inline next to the story title.
 function ReadAloudControl({ fullText, voiceGender }) {
-  const { status, toggle, restart } = usePassagePlayback(fullText, voiceGender)
+  const { status, toggle, restart, restartIfStarted } = usePassagePlayback(fullText, voiceGender)
   const started = status !== 'idle'
 
   return (
     <div className="flex shrink-0 items-center gap-0.5">
+      <SpeechSpeedToggle onChange={restartIfStarted} />
       <Button
         type="button"
         variant="ghost"

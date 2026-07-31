@@ -11,6 +11,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Input } from '@/components/ui/input'
 import SpeakButton from '@/components/SpeakButton'
 import VoicePicker from '@/components/VoicePicker'
+import SpeechSpeedToggle from '@/components/SpeechSpeedToggle'
 import VoiceDebugInfo from '@/components/VoiceDebugInfo'
 import { useVoiceGender } from '@/lib/useVoiceGender'
 import { useReviewMode } from '@/lib/useReviewMode'
@@ -217,6 +218,7 @@ export default function ReviewClient({ deckId, deckName, initialCards }) {
           <h1 className="text-lg font-semibold text-slate-900 dark:text-white truncate">{deckName}</h1>
           <div className="flex items-center gap-1 shrink-0">
             <VoicePicker gender={voiceGender} onChange={setVoiceGender} />
+            <SpeechSpeedToggle />
             <VoiceDebugInfo />
             <Link href="/decks" className="text-sm text-slate-500 dark:text-white/70 hover:text-slate-900 dark:hover:text-white">
               Exit

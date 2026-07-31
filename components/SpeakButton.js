@@ -1,11 +1,7 @@
 'use client'
 import { Volume2, Turtle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { speak } from '@/lib/speech'
-
-// Slow/enunciated playback rate for the turtle button — deliberately slow so
-// beginners can catch every syllable, but not so slow it sounds robotic.
-const SLOW_RATE = 0.6
+import { speak, SLOW_RATE } from '@/lib/speech'
 
 // Small speaker icon that reads `text` aloud in Spanish. Stops click
 // propagation so it can sit on top of a clickable flashcard without
@@ -21,6 +17,7 @@ export default function SpeakButton({ text, gender, slow = false, className = ''
       size="icon-sm"
       onClick={(e) => { e.stopPropagation(); speak(text, gender, slow ? { rate: SLOW_RATE } : undefined) }}
       aria-label={slow ? `Play ${text} slowly` : `Play pronunciation of ${text}`}
+      title={slow ? 'Play this slowly' : 'Play pronunciation'}
       className={`text-muted-foreground hover:text-primary ${className}`}>
       <Icon className="size-4" />
     </Button>

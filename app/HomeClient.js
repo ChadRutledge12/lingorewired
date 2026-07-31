@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import SpeakButton from '@/components/SpeakButton'
 import VoicePicker from '@/components/VoicePicker'
+import SpeechSpeedToggle from '@/components/SpeechSpeedToggle'
 import VoiceDebugInfo from '@/components/VoiceDebugInfo'
 import SuggestionsList from '@/components/SuggestionsList'
 import { LogoMark, RED as BRAND_RED } from '@/components/Logo'
@@ -756,6 +757,7 @@ export default function Home({ user, lastProfile, startNew = false }) {
               </Tabs>
               <div className="flex items-center gap-1">
                 <VoicePicker gender={voiceGender} onChange={setVoiceGender} />
+                <SpeechSpeedToggle />
                 <VoiceDebugInfo />
               </div>
             </div>
