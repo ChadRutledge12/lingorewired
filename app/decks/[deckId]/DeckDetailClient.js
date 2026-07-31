@@ -2,12 +2,13 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Pencil, Trash2, Check, X, Loader2, Download, Sparkles, Share2, Lightbulb, Plus, BookOpen, Languages } from 'lucide-react'
+import { ArrowLeft, Pencil, Trash2, Check, X, Loader2, Download, Sparkles, Share2, Lightbulb, Plus, BookOpen, Languages, ClipboardPaste } from 'lucide-react'
 import { exportDeckPdf } from '@/lib/exportPdf'
 import { masteryOf } from '@/lib/mastery'
 import { tierInfo } from '@/lib/tier'
 import WordCloud from '@/components/WordCloud'
 import SuggestionsList from '@/components/SuggestionsList'
+import ImportWordsPanel from '@/components/ImportWordsPanel'
 import { LogoLink } from '@/components/Logo'
 import GenerationProgress from '@/components/GenerationProgress'
 import { Button } from '@/components/ui/button'
@@ -143,6 +144,55 @@ function AddCardForm({ deckId, onAdded, onCancel }) {
   const [draft, setDraft] = useState({ ...EMPTY_DRAFT, part_of_speech: 'other' })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [filling, setFilling] = useState(false)
+  // Candidate meanings, only ever populated when the typed word is genuinely
+  // ambiguous ("bank"). Picking one fills the form.
+  const [senses, setSenses] = useState([])
+
+  const applySense = (sense) => {
+    setDraft({
+      word: sense.word,
+      translation: sense.translation,
+      // The model is told to use this vocabulary, but the Select renders
+      // nothing for a value outside its options, so anything unexpected
+      // lands on "other" rather than blanking the control.
+      part_of_speech: POS_OPTIONS.includes(sense.part_of_speech) ? sense.part_of_speech : 'other',
+      example: sense.example,
+      example_translation: sense.example_translation,
+    })
+    setSenses([])
+  }
+
+  // Hand-typing a card leaves it strictly worse than a generated one — no
+  // example sentence, no dialect awareness. This fills the rest of the form
+  // from whatever the learner has typed so far, still fully editable.
+  const fillIn = async () => {
+    const word = draft.word.trim()
+    if (!word) { setError('Type the word first — then I can fill in the rest'); return }
+    setFilling(true)
+    setError('')
+    setSenses([])
+    try {
+      const res = await fetch(`/api/decks/${deckId}/enrich`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ words: [{ word, translation: draft.translation.trim() }] }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to fill this in')
+      const filled = data.drafts?.[0]
+      if (!filled) throw new Error(`Couldn't work out what "${word}" means — check the spelling.`)
+      if (filled.ambiguous && filled.senses.length > 1) {
+        setSenses(filled.senses)
+      } else {
+        applySense(filled.senses[0])
+      }
+    } catch (err) {
+      setError(err.message || 'Failed to fill this in')
+    } finally {
+      setFilling(false)
+    }
+  }
 
   const save = async () => {
     if (!draft.word.trim()) { setError('The Spanish word is required'); return }
@@ -160,6 +210,7 @@ function AddCardForm({ deckId, onAdded, onCancel }) {
       // Keep the form open with cleared fields — adding a list of words
       // from a textbook shouldn't need a click between every entry.
       setDraft({ ...EMPTY_DRAFT, part_of_speech: 'other' })
+      setSenses([])
     } catch (err) {
       setError(err.message || 'Failed to add card')
     } finally {
@@ -183,12 +234,35 @@ function AddCardForm({ deckId, onAdded, onCancel }) {
       <Input value={draft.translation} onChange={(e) => setDraft((d) => ({ ...d, translation: e.target.value }))} placeholder="Translation" className="rounded-lg bg-white border-slate-300 text-slate-900 placeholder:text-slate-400" />
       <Input value={draft.example} onChange={(e) => setDraft((d) => ({ ...d, example: e.target.value }))} placeholder="Example sentence (optional)" className="rounded-lg bg-white border-slate-300 text-slate-900 placeholder:text-slate-400" />
       <Input value={draft.example_translation} onChange={(e) => setDraft((d) => ({ ...d, example_translation: e.target.value }))} placeholder="Example translation (optional)" className="rounded-lg bg-white border-slate-300 text-slate-900 placeholder:text-slate-400" />
+
+      {senses.length > 0 && (
+        <div className="rounded-lg bg-slate-50 p-2">
+          <p className="text-xs text-slate-600">That word has more than one meaning — which did you mean?</p>
+          <div className="mt-1.5 flex flex-wrap gap-1.5">
+            {senses.map((sense, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => applySense(sense)}
+                className="rounded-full border border-slate-300 bg-white px-2.5 py-1 text-xs text-slate-700 hover:border-primary/40 hover:text-slate-900">
+                {sense.word}
+                {sense.sense && <span className="text-slate-500"> · {sense.sense}</span>}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {error && <p className="text-sm text-red-500">{error}</p>}
-      <div className="flex gap-2 pt-1">
-        <Button type="submit" size="sm" disabled={saving} className="rounded-lg">
+      <div className="flex flex-wrap gap-2 pt-1">
+        <Button type="submit" size="sm" disabled={saving || filling} className="rounded-lg">
           {saving ? <Loader2 className="size-3.5 animate-spin" /> : <Plus className="size-3.5" />} Add card
         </Button>
-        <Button type="button" size="sm" variant="ghost" onClick={onCancel} disabled={saving} className="rounded-lg">
+        <Button type="button" size="sm" variant="outline" onClick={fillIn} disabled={saving || filling} className="rounded-lg">
+          {filling ? <Loader2 className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />}
+          {filling ? 'Filling in…' : 'Fill this in'}
+        </Button>
+        <Button type="button" size="sm" variant="ghost" onClick={onCancel} disabled={saving || filling} className="rounded-lg">
           Done
         </Button>
       </div>
@@ -338,6 +412,7 @@ export default function DeckDetailClient({ deck, initialCards, dueCount, initial
   const [suggestionsError, setSuggestionsError] = useState('')
   const [addingTopic, setAddingTopic] = useState('')
   const [addingCard, setAddingCard] = useState(false)
+  const [importOpen, setImportOpen] = useState(false)
   const [readings] = useState(initialReadings)
   const [readingPanelOpen, setReadingPanelOpen] = useState(false)
   const [readingScenario, setReadingScenario] = useState('')
@@ -540,10 +615,12 @@ export default function DeckDetailClient({ deck, initialCards, dueCount, initial
   return (
     <div className="min-h-screen bg-muted/40 dark:bg-[#0f1442] p-4 sm:p-6">
       <div className="mx-auto w-full max-w-2xl">
-        <LogoLink className="mb-4" />
-        <Link href="/decks" className="inline-flex items-center gap-1 text-sm text-muted-foreground dark:text-white/60 hover:text-foreground dark:hover:text-white mb-4">
-          <ArrowLeft className="size-3.5" /> Back to decks
-        </Link>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+          <LogoLink />
+          <Link href="/decks" className="inline-flex items-center gap-1 text-sm text-muted-foreground dark:text-white/60 hover:text-foreground dark:hover:text-white">
+            <ArrowLeft className="size-3.5" /> Back to decks
+          </Link>
+        </div>
 
         <div className="mb-3 flex items-center gap-2">
           <DeckName deck={deck} />
@@ -575,6 +652,13 @@ export default function DeckDetailClient({ deck, initialCards, dueCount, initial
             disabled={addingCard}
             className="rounded-xl">
             <Plus className="size-3.5" /> Add card
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setImportOpen((o) => !o)}
+            className="rounded-xl">
+            <ClipboardPaste className="size-3.5" /> Import a list
           </Button>
           <Button
             variant="outline"
@@ -663,6 +747,14 @@ export default function DeckDetailClient({ deck, initialCards, dueCount, initial
               ))}
             </div>
           </div>
+        )}
+
+        {importOpen && (
+          <ImportWordsPanel
+            deckId={deck.id}
+            onAdded={(added) => setCards((prev) => [...prev, ...added])}
+            onClose={() => setImportOpen(false)}
+          />
         )}
 
         {addingCard && (

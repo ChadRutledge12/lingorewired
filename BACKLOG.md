@@ -20,7 +20,7 @@ one thing you can do without me.
 | Slot | Item | Why it's here |
 |---|---|---|
 | **Quick win (S/M)** | LR-22 — Settings "✓ Saved" pill shows before any edit | Small, isolated, visible. Good warm-up task. |
-| **Main build (M/L)** | LR-33 — Import UI for the enrich endpoint | Backend is already written and tested; this is the half that makes it real. |
+| **Main build (M/L)** | LR-33 — Import UI for the enrich endpoint | Built and click-through-verified 2026-07-31; uncommitted, awaiting your go-ahead. |
 | **Yours, no code** | LR-24 — add `SUPABASE_SERVICE_ROLE_KEY` to `.env.local` | Blocks local cron/admin testing. Five minutes in the Supabase dashboard. |
 
 **Also open, awaiting your word:** LR-30 (rework the level/placement test) needs a
@@ -70,7 +70,7 @@ talk-through with you before anyone writes code.
 | ID | Task | Why | Pri | Est | Status | Done when |
 |---|---|---|---|---|---|---|
 | LR-7 | **Paste-text → vocab extraction** | Paste a letter/article → instant deck of the hard words | P1 | M | open | New flow: paste text → AI extracts + glosses → saveable deck |
-| LR-33 | **Import UI for the enrich endpoint** | Backend (`POST /api/decks/[deckId]/enrich`) is built and tested but has no UI, so it does nothing yet | P1 | M | open — backend done, **uncommitted** | Paste box on deck detail + sense picker for ambiguous words + "✨ fill this in" on the manual add form |
+| LR-33 | **Import UI for the enrich endpoint** | The backend did nothing without a UI | P1 | M | built + verified 2026-07-31, **uncommitted** | Paste box on deck detail + sense picker for ambiguous words + "Fill this in" on the manual add form |
 | LR-15 | Reading genres beyond narrative (official letters, dialogues) | Real-world formats, esp. the immigration persona | P2 | M | open | Reading generator offers ≥2 non-story genres |
 | LR-16 | Role-play dialogue exercises | Production practice in context | P3 | L | open | Interactive back-and-forth dialogue drill |
 | LR-17 | Chunks / collocations & idioms layer | Fluency > isolated words | P3 | L | open | Multi-word items as a first-class card type |
@@ -107,10 +107,13 @@ talk-through with you before anyone writes code.
 
 ## Known blockers to check before starting anything
 
-- **Wedged `next dev` on port 3000.** Next refuses to start a second dev server for the
-  same directory, so `preview_start` silently dies and live verification is impossible.
-  I can't kill a process I didn't start — you run `kill <PID>`. Check this *first*
-  whenever a preview won't come up.
+- **A route folder starting with `_` will 404 — it is not a wedged dev server.** Next
+  treats `_folder` as a *private folder* and excludes it from routing. Several past
+  sessions burned time restarting the dev server over this. Name throwaway verification
+  routes `harness-x`, not `_harness-x`.
+- **Don't run `npm run build` while `next dev` is running** — it overwrites `.next`
+  underneath the dev server. If a preview really is wedged, only you can restart it;
+  I'm blocked from killing a process I didn't start.
 - **Never create a git worktree under `app/`.** Next's app router scans it as routes and
   the build breaks outright.
 - **A parallel session may own files in this repo.** Check `git status` before staging,
